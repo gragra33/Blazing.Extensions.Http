@@ -1,0 +1,389 @@
+<Window x:Class="WpfExample.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:WpfExample.Views"
+        xmlns:c="clr-namespace:WpfExample.Components"
+        xmlns:vm="clr-namespace:WpfExample.ViewModels"
+        mc:Ignorable="d"
+        Title="Blazing.Extensions.Http - Download Manager (WPF)" 
+        Height="800" Width="820"
+        WindowStartupLocation="CenterScreen"
+        Background="#F5F5F5">
+    
+    <Window.Resources>
+        <!-- Button Styles -->
+        <Style x:Key="StartButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#0078D7"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Normal"/>
+            <Setter Property="Height" Value="35"/>
+            <Setter Property="Width" Value="150"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="2">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#005A9E"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#CCCCCC"/>
+                    <Setter Property="Cursor" Value="Arrow"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="StopButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#E81123"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Normal"/>
+            <Setter Property="Height" Value="35"/>
+            <Setter Property="Width" Value="160"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="2">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#C50F1F"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#CCCCCC"/>
+                    <Setter Property="Cursor" Value="Arrow"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="CancelButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#E81123"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="Normal"/>
+            <Setter Property="Height" Value="25"/>
+            <Setter Property="Width" Value="100"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="2">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#C50F1F"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#CCCCCC"/>
+                    <Setter Property="Cursor" Value="Arrow"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Stat Card Style -->
+        <Style x:Key="StatCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="#F0F0F0"/>
+            <Setter Property="BorderBrush" Value="#D0D0D0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="3"/>
+            <Setter Property="Padding" Value="8"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="Width" Value="185"/>
+            <Setter Property="Height" Value="55"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Title -->
+        <TextBlock Grid.Row="0" 
+                   Text="HTTP Download Manager with Progress &amp; Latency Tracking"
+                   FontSize="18" 
+                   FontWeight="Bold"
+                   Margin="0,0,0,10"/>
+
+        <!-- Control Buttons -->
+        <StackPanel Grid.Row="1" 
+                    Orientation="Horizontal" 
+                    Margin="0,0,0,15">
+            <Button Content="Start Downloads" 
+                    Style="{StaticResource StartButtonStyle}"
+                    Command="{Binding StartDownloadsCommand}"
+                    IsEnabled="{Binding IsDownloading, Converter={StaticResource InverseBoolConverter}}"/>
+            <Button Content="Stop All Downloads" 
+                    Style="{StaticResource StopButtonStyle}"
+                    Command="{Binding StopDownloadsCommand}"
+                    IsEnabled="{Binding IsDownloading}"
+                    Margin="10,0,0,0"/>
+        </StackPanel>
+
+        <!-- Statistics Panel -->
+        <Border Grid.Row="2" 
+                BorderBrush="#D0D0D0" 
+                BorderThickness="1"
+                Background="White"
+                CornerRadius="3"
+                Padding="5"
+                Margin="0,0,0,15">
+            <c:AlignableWrapPanel HorizontalContentAlignment="Center">
+                <!-- Total Downloads Card -->
+                <Border Style="{StaticResource StatCardStyle}">
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="Total Downloads" 
+                                   FontSize="10" 
+                                   Foreground="Gray"
+                                   Margin="0,0,0,2"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding TotalDownloadsText}" 
+                                   FontSize="14" 
+                                   FontWeight="Bold"
+                                   Margin="0,5,0,0"
+                                   HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Active Downloads Card -->
+                <Border Style="{StaticResource StatCardStyle}">
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="Active" 
+                                   FontSize="10" 
+                                   Foreground="Gray"
+                                   Margin="0,0,0,2"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding ActiveDownloadsText}" 
+                                   FontSize="14" 
+                                   FontWeight="Bold"
+                                   Margin="0,5,0,0"
+                                   HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Completed Downloads Card -->
+                <Border Style="{StaticResource StatCardStyle}">
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="Completed" 
+                                   FontSize="10" 
+                                   Foreground="Gray"
+                                   Margin="0,0,0,2"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding CompletedDownloadsText}" 
+                                   FontSize="14" 
+                                   FontWeight="Bold"
+                                   Margin="0,5,0,0"
+                                   HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Failed Downloads Card -->
+                <Border Style="{StaticResource StatCardStyle}">
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="Failed" 
+                                   FontSize="10" 
+                                   Foreground="Gray"
+                                   Margin="0,0,0,2"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding FailedDownloadsText}" 
+                                   FontSize="14" 
+                                   FontWeight="Bold"
+                                   Margin="0,5,0,0"
+                                   HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Total Bytes Card -->
+                <Border Style="{StaticResource StatCardStyle}">
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="Total Bytes" 
+                                   FontSize="10" 
+                                   Foreground="Gray"
+                                   Margin="0,0,0,2"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding TotalBytesText}" 
+                                   FontSize="14" 
+                                   FontWeight="Bold"
+                                   Margin="0,5,0,0"
+                                   HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Overall Speed Card -->
+                <Border Style="{StaticResource StatCardStyle}">
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="Overall Speed" 
+                                   FontSize="10" 
+                                   Foreground="Gray"
+                                   Margin="0,0,0,2"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding OverallSpeedText}" 
+                                   FontSize="14" 
+                                   FontWeight="Bold"
+                                   Margin="0,5,0,0"
+                                   HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Average Latency Card -->
+                <Border Style="{StaticResource StatCardStyle}">
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="Avg Latency" 
+                                   FontSize="10" 
+                                   Foreground="Gray"
+                                   Margin="0,0,0,2"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding AverageLatencyText}" 
+                                   FontSize="14" 
+                                   FontWeight="Bold"
+                                   Margin="0,5,0,0"
+                                   HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Total Elapsed Card -->
+                <Border Style="{StaticResource StatCardStyle}">
+                    <StackPanel HorizontalAlignment="Center">
+                        <TextBlock Text="Total Elapsed" 
+                                   FontSize="10" 
+                                   Foreground="Gray"
+                                   Margin="0,0,0,2"
+                                   HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding TotalElapsedText}" 
+                                   FontSize="14" 
+                                   FontWeight="Bold"
+                                   Margin="0,5,0,0"
+                                   HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </c:AlignableWrapPanel>
+        </Border>
+
+        <!-- Downloads List -->
+        <Border Grid.Row="3" 
+                BorderBrush="#D0D0D0" 
+                BorderThickness="1"
+                Background="White"
+                CornerRadius="3">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding Downloads}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border BorderBrush="#D0D0D0" 
+                                    BorderThickness="1" 
+                                    Margin="5"
+                                    Padding="10"
+                                    CornerRadius="3"
+                                    Background="White">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <!-- File Name and Cancel Button -->
+                                    <Grid Grid.Row="0" Margin="0,0,0,5">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding FileName}" 
+                                                   FontSize="13" 
+                                                   FontWeight="Bold"
+                                                   VerticalAlignment="Center"
+                                                   HorizontalAlignment="Left">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsComplete}" Value="True">
+                                                            <Setter Property="Foreground" Value="Green"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsError}" Value="True">
+                                                            <Setter Property="Foreground" Value="Red"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <Button Grid.Column="1"
+                                                Content="Cancel"
+                                                Style="{StaticResource CancelButtonStyle}"
+                                                Command="{Binding CancelDownloadCommand}"
+                                                IsEnabled="{Binding CanCancel}"/>
+                                    </Grid>
+
+                                    <!-- Progress Bar -->
+                                    <ProgressBar Grid.Row="1" 
+                                                 Height="25" 
+                                                 Minimum="0" 
+                                                 Maximum="100"
+                                                 Value="{Binding ProgressPercentage}"
+                                                 Margin="0,0,0,5"/>
+
+                                    <!-- Stats Table: 2 columns, 5 rows -->
+                                    <Grid Grid.Row="2" Margin="0,0,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" SharedSizeGroup="Col1"/>
+                                            <ColumnDefinition Width="*" SharedSizeGroup="Col2"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <!-- Column 1 -->
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding ProgressText, StringFormat='Progress: {0}'}" FontSize="11" Margin="0,0,0,2" HorizontalAlignment="Left"/>
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding CurrentSpeedText}" FontSize="11" Margin="0,0,0,2" HorizontalAlignment="Left"/>
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding MaximumSpeedText}" FontSize="11" Margin="0,0,0,2" HorizontalAlignment="Left"/>
+                                        <TextBlock Grid.Row="3" Grid.Column="0" Text="{Binding LatencyText}" FontSize="11" Margin="0,0,0,2" HorizontalAlignment="Left"/>
+                                        <TextBlock Grid.Row="4" Grid.Column="0" Text="{Binding TtfbText}" FontSize="11" Margin="0,0,0,2" HorizontalAlignment="Left"/>
+                                        <!-- Column 2 -->
+                                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding TransferredText}" FontSize="11" Margin="0,0,0,2" HorizontalAlignment="Left"/>
+                                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding AverageSpeedText}" FontSize="11" Margin="0,0,0,2" HorizontalAlignment="Left"/>
+                                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ElapsedTimeText}" FontSize="11" Margin="0,0,0,2" HorizontalAlignment="Left"/>
+                                        <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding RemainingTimeText}" FontSize="11" Margin="0,0,0,2" HorizontalAlignment="Left"/>
+                                    </Grid>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</Window>

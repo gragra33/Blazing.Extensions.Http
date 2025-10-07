@@ -1,0 +1,64 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.11018.127 d18.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{A1234567-B123-C123-D123-E12345678901}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{9739C198-C5D1-4367-BC02-1AC293D86604}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Blazing.Extensions.Http", "src\Blazing.Extensions.Http\Blazing.Extensions.Http.csproj", "{ACB6559E-020A-4BA9-B75C-117FC853AE36}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{6F1451C4-A42A-45E2-A1B2-DC5A7996FBF4}"
+	ProjectSection(SolutionItems) = preProject
+		cleanbuild.ps1 = cleanbuild.ps1
+		CODE_OF_CONDUCT.md = CODE_OF_CONDUCT.md
+		CONTRIBUTING.md = CONTRIBUTING.md
+		Directory.Build.props = Directory.Build.props
+		Directory.Packages.props = Directory.Packages.props
+		HISTORY.md = HISTORY.md
+		LICENSE = LICENSE
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleExample", "src\samples\ConsoleExample\ConsoleExample.csproj", "{E6B2D06A-7407-C555-16CB-80FF205DA0D8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinFormsExample", "src\samples\WinFormsExample\WinFormsExample.csproj", "{2B59F9E3-0551-745E-EC01-829DC3CF1B8F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WpfExample", "src\samples\WpfExample\WpfExample.csproj", "{2A907B16-EB13-2A26-4788-E77665180A38}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{ACB6559E-020A-4BA9-B75C-117FC853AE36}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ACB6559E-020A-4BA9-B75C-117FC853AE36}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ACB6559E-020A-4BA9-B75C-117FC853AE36}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ACB6559E-020A-4BA9-B75C-117FC853AE36}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E6B2D06A-7407-C555-16CB-80FF205DA0D8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E6B2D06A-7407-C555-16CB-80FF205DA0D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E6B2D06A-7407-C555-16CB-80FF205DA0D8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E6B2D06A-7407-C555-16CB-80FF205DA0D8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2B59F9E3-0551-745E-EC01-829DC3CF1B8F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2B59F9E3-0551-745E-EC01-829DC3CF1B8F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2B59F9E3-0551-745E-EC01-829DC3CF1B8F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2B59F9E3-0551-745E-EC01-829DC3CF1B8F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2A907B16-EB13-2A26-4788-E77665180A38}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2A907B16-EB13-2A26-4788-E77665180A38}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2A907B16-EB13-2A26-4788-E77665180A38}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2A907B16-EB13-2A26-4788-E77665180A38}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{ACB6559E-020A-4BA9-B75C-117FC853AE36} = {9739C198-C5D1-4367-BC02-1AC293D86604}
+		{E6B2D06A-7407-C555-16CB-80FF205DA0D8} = {A1234567-B123-C123-D123-E12345678901}
+		{2B59F9E3-0551-745E-EC01-829DC3CF1B8F} = {A1234567-B123-C123-D123-E12345678901}
+		{2A907B16-EB13-2A26-4788-E77665180A38} = {A1234567-B123-C123-D123-E12345678901}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {12345678-1234-1234-1234-123456789012}
+	EndGlobalSection
+EndGlobal
