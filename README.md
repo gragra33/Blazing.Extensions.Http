@@ -1,5 +1,10 @@
 ﻿# Blazing.Extensions.Http: Advanced HttpClient Extensions for .NET
 
+[![NuGet Version](https://img.shields.io/nuget/v/Blazing.Extensions.Http.svg)](https://www.nuget.org/packages/Blazing.Extensions.Http)
+[![NuGet Downloads](https://img.shields.io/nuget/dt/Blazing.Extensions.Http.svg)](https://www.nuget.org/packages/Blazing.Extensions.Http)
+
+## Overview
+
 High-performance HttpClient extension methods with real-time asynchronous Get/Post progress reporting, latency tracking, and detailed transfer statistics. Built for .NET 8 & 9, this library provides essential functionality for file downloads, uploads, and HTTP operations requiring comprehensive monitoring and performance insights.
 
 ## Table of Contents
