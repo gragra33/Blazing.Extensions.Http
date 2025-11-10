@@ -7,6 +7,8 @@
 
 High-performance HttpClient extension methods with real-time asynchronous Get/Post progress reporting, latency tracking, and detailed transfer statistics. Built for .NET 8 & 9, this library provides essential functionality for file downloads, uploads, and HTTP operations requiring comprehensive monitoring and performance insights.
 
+![WPF Demo](images/Blazing.Http.Wpf.gif)
+
 ## Table of Contents
 
 -   [Quick Start](#quick-start)

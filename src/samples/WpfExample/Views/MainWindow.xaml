@@ -6,6 +6,7 @@
         xmlns:local="clr-namespace:WpfExample.Views"
         xmlns:c="clr-namespace:WpfExample.Components"
         xmlns:vm="clr-namespace:WpfExample.ViewModels"
+        xmlns:converters="clr-namespace:WpfExample.Converters"
         mc:Ignorable="d"
         Title="Blazing.Extensions.Http - Download Manager (WPF)" 
         Height="800" Width="820"
@@ -13,6 +14,7 @@
         Background="#F5F5F5">
     
     <Window.Resources>
+        <converters:InverseBoolConverter x:Key="InverseBoolConverter"/>
         <!-- Button Styles -->
         <Style x:Key="StartButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="#0078D7"/>
