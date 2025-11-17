@@ -1,16 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <!-- Multi-target both .NET 8.0 and .NET 9.0 for maximum compatibility -->
-    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+    <!-- Multi-target .NET 8.0, .NET 9.0, and .NET 10.0 for maximum compatibility -->
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
 
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <PackageId>Blazing.Extensions.Http</PackageId>
-    <Version>1.0.0</Version>
-    <Authors>Graeme Grant</Authors>
     <Product>Blazing.Extensions.Http</Product>
-    <Description>Advanced HttpClient extension methods with real-time progress reporting, latency tracking, and detailed transfer statistics. Built for .NET 8 &amp; 9, this library provides essential functionality for file downloads, uploads, and HTTP operations requiring comprehensive monitoring and performance insights.</Description>
-    <PackageTags>httpclient;download;upload;progress;transfer;http;net8;net9;extensions;performance;monitoring;blazing</PackageTags>
+    <Description>Advanced HttpClient extension methods with real-time progress reporting, latency tracking, and detailed transfer statistics. Built for .NET 8, 9 &amp; 10, this library provides essential functionality for file downloads, uploads, and HTTP operations requiring comprehensive monitoring and performance insights.</Description>
+    <PackageTags>httpclient;download;upload;progress;transfer;http;net8;net9;net10;extensions;performance;monitoring;blazing</PackageTags>
     <RepositoryUrl>https://github.com/gragra33/Blazing.Extensions.Http</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

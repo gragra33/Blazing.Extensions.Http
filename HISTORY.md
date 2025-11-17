@@ -1,6 +1,11 @@
 # Blazing.Extensions.Http History
 
-## V1.0.0 (.Net 8.0+) (7 October, 2025)
+### V2.0.0 - 17 November 2025
+
+ -  **.NET 10.0 Support** - Full compatibility with .NET 10.0
+ -  **Test Coverage** - Added unit tests for core functionalities
+
+## V1.0.0 (.Net 8.0+) - 7 October, 2025
 
 ### Initial Release
 

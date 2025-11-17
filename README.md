@@ -5,7 +5,7 @@
 
 ## Overview
 
-High-performance HttpClient extension methods with real-time asynchronous Get/Post progress reporting, latency tracking, and detailed transfer statistics. Built for .NET 8 & 9, this library provides essential functionality for file downloads, uploads, and HTTP operations requiring comprehensive monitoring and performance insights.
+High-performance HttpClient extension methods with real-time asynchronous Get/Post progress reporting, latency tracking, and detailed transfer statistics. Built for .NET 8, 9 & 10, this library provides essential functionality for file downloads, uploads, and HTTP operations requiring comprehensive monitoring and performance insights.
 
 ![WPF Demo](images/Blazing.Http.Wpf.gif)
 
@@ -70,7 +70,7 @@ dotnet add package Blazing.Extensions.Http
 #### Project Reference
 
 ```xml
-<PackageReference Include="Blazing.Extensions.Http" Version="1.0.0" />
+<PackageReference Include="Blazing.Extensions.Http" Version="2.0.0" />
 ```
 
 ### Configuration
@@ -1537,7 +1537,7 @@ public async Task ConcurrentDownloadsAsync()
 
 ## Requirements
 
--   .NET 8.0 or .NET 9.0
+-   .NET 8.0, .NET 9.0 or .NET 10.0
 -   Microsoft.Extensions.Http 8.0.0 or later (for IHttpClientFactory support)
 
 ## Project Structure
@@ -1588,7 +1588,7 @@ Blazing.Extensions.Http/                    # Solution root
 
 ## Building
 
-The solution supports .NET 8.0 and .NET 9.0 and provides straightforward build and execution commands for all projects and samples.
+The solution supports .NET 8.0, .NET 9.0, & .NET 10.0 and provides straightforward build and execution commands for all projects and samples.
 
 ```bash
 # Build the entire solution
@@ -1613,7 +1613,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 ### Development Setup
 
 1. Clone the repository
-2. Install .NET 8.0 or .NET 9.0 SDK
+2. Install .NET 8.0, .NET 9.0, or .NET 10.0 SDK
 3. Run `dotnet restore`
 4. Run `dotnet build`
 
@@ -1641,6 +1641,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 -   High-precision timing implemented using [Stopwatch](https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.stopwatch) for accurate performance measurements
 
 ## History
+
+### V2.0.0 - 17 November 2025
+
+ -  **.NET 10.0 Support** - Full compatibility with .NET 10.0
+ -  **Test Coverage** - Added unit tests for core functionalities
 
 ### V1.0.0 (.Net 8.0+)
 
