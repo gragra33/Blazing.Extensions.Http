@@ -2,6 +2,7 @@
 
 [![NuGet Version](https://img.shields.io/nuget/v/Blazing.Extensions.Http.svg)](https://www.nuget.org/packages/Blazing.Extensions.Http)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/Blazing.Extensions.Http.svg)](https://www.nuget.org/packages/Blazing.Extensions.Http)
+[![.NET 8+](https://img.shields.io/badge/.NET-8%2B-512BD4)](https://dotnet.microsoft.com/download)
 
 ## Overview
 
