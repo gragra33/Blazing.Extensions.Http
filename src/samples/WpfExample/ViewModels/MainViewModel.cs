@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using Blazing.Extensions.DependencyInjection;
@@ -57,18 +58,22 @@ public partial class MainViewModel : ObservableObject
     private double _totalSpeed;
     private double _totalLatency;
     private int _latencyCount;
-    private DateTime _startTime;
+    private readonly Stopwatch _stopwatch = new();
     private int _activeDownloads;
     private int _completedDownloads;
     private int _failedDownloads;
 
+#pragma warning disable S1075 // Hardcoded URI in sample application
+    private const string SampleDownloadUrl = "https://download.visualstudio.microsoft.com/download/pr/89a2923a-18df-4dce-b069-51e687b04a53/9db4348b561703e622de7f03b1f11e93/dotnet-sdk-7.0.203-win-x64.exe";
+#pragma warning restore S1075
+
     // Download URLs for testing
     private readonly string[] _downloadUrls = new[]
     {
-        "https://download.visualstudio.microsoft.com/download/pr/89a2923a-18df-4dce-b069-51e687b04a53/9db4348b561703e622de7f03b1f11e93/dotnet-sdk-7.0.203-win-x64.exe",
-        "https://download.visualstudio.microsoft.com/download/pr/89a2923a-18df-4dce-b069-51e687b04a53/9db4348b561703e622de7f03b1f11e93/dotnet-sdk-7.0.203-win-x64.exe",
-        "https://download.visualstudio.microsoft.com/download/pr/89a2923a-18df-4dce-b069-51e687b04a53/9db4348b561703e622de7f03b1f11e93/dotnet-sdk-7.0.203-win-x64.exe",
-        "https://download.visualstudio.microsoft.com/download/pr/89a2923a-18df-4dce-b069-51e687b04a53/9db4348b561703e622de7f03b1f11e93/dotnet-sdk-7.0.203-win-x64.exe"
+        SampleDownloadUrl,
+        SampleDownloadUrl,
+        SampleDownloadUrl,
+        SampleDownloadUrl
     };
 
     public MainViewModel(DownloadService downloadService)
@@ -96,7 +101,6 @@ public partial class MainViewModel : ObservableObject
         // Initialize statistics
         _totalDownloads = _downloadUrls.Length;
         _activeDownloads = _downloadUrls.Length;
-        _startTime = DateTime.Now;
         UpdateStatisticsDisplay();
 
         // Initialize destination paths for this batch
@@ -135,10 +139,6 @@ public partial class MainViewModel : ObservableObject
             await Task.WhenAll(downloadTasks);
             MessageBox.Show("All downloads completed!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
         }
-        catch (OperationCanceledException)
-        {
-            MessageBox.Show("Downloads were cancelled.", "Cancelled", MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
         catch (Exception ex)
         {
             MessageBox.Show($"Error during downloads: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -147,6 +147,11 @@ public partial class MainViewModel : ObservableObject
         {
             IsDownloading = false;
         }
+
+        if (_completedDownloads == _totalDownloads)
+            MessageBox.Show("All downloads completed!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+        else if (_failedDownloads > 0)
+            MessageBox.Show($"Downloads finished: {_completedDownloads} completed, {_failedDownloads} failed or cancelled.", "Completed", MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 
     [RelayCommand]
@@ -165,11 +170,8 @@ public partial class MainViewModel : ObservableObject
         {
             var progress = new Progress<TransferState>(state =>
             {
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    downloadVm.UpdateProgress(state);
-                    UpdateStatistics(state);
-                });
+                downloadVm.UpdateProgress(state);
+                UpdateStatistics(state);
             });
 
             var latencyTracker = new LatencyTracker();
@@ -177,7 +179,7 @@ public partial class MainViewModel : ObservableObject
             DownloadResult result = await _downloadService.DownloadFileAsync(
                 new Uri(url), destinationPath, progress, latencyTracker, resumeToken: null, cancellationToken);
 
-            Application.Current.Dispatcher.Invoke(() =>
+            await Application.Current.Dispatcher.InvokeAsync(() =>
             {
                 if (result.IsSuccess)
                 {
@@ -203,7 +205,7 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception)
         {
-            Application.Current.Dispatcher.Invoke(() =>
+            await Application.Current.Dispatcher.InvokeAsync(() =>
             {
                 downloadVm.MarkError();
                 MarkDownloadFailed();
@@ -248,21 +250,20 @@ public partial class MainViewModel : ObservableObject
 
     private async Task ResumeFileAsync(DownloadItemViewModel vm, ResumeToken resumeToken, string destinationPath, CancellationToken ct)
     {
-        Application.Current.Dispatcher.Invoke(MarkDownloadResuming);
+        await Application.Current.Dispatcher.InvokeAsync(MarkDownloadResuming);
         try
         {
             var latencyTracker = new LatencyTracker();
             var progress = new Progress<TransferState>(state =>
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    vm.UpdateProgress(state);
-                    UpdateStatistics(state);
-                }));
+            {
+                vm.UpdateProgress(state);
+                UpdateStatistics(state);
+            });
 
             DownloadResult result = await _downloadService.DownloadFileAsync(
                 resumeToken.Url, destinationPath, progress, latencyTracker, resumeToken, ct);
 
-            Application.Current.Dispatcher.Invoke(() =>
+            await Application.Current.Dispatcher.InvokeAsync(() =>
             {
                 if (result.IsSuccess)
                 {
@@ -285,7 +286,7 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception)
         {
-            Application.Current.Dispatcher.Invoke(() => vm.MarkError());
+            await Application.Current.Dispatcher.InvokeAsync(() => vm.MarkError());
         }
     }
 
@@ -296,7 +297,7 @@ public partial class MainViewModel : ObservableObject
         _totalSpeed = 0;
         _totalLatency = 0;
         _latencyCount = 0;
-        _startTime = DateTime.Now;
+        _stopwatch.Restart();
         _activeDownloads = 0;
         _completedDownloads = 0;
         _failedDownloads = 0;
@@ -374,7 +375,7 @@ public partial class MainViewModel : ObservableObject
         }
 
         // Total elapsed
-        var elapsed = DateTime.Now - _startTime;
+        TimeSpan elapsed = _stopwatch.Elapsed;
         TotalElapsedText = $"{elapsed.TotalSeconds:N1}s";
     }
 }

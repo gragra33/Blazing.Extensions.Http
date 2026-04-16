@@ -527,7 +527,7 @@ Built-in pause and resume support for long-running downloads using HTTP Range Re
 - ✅ **Range Request Support**: Pass the `ResumeToken` back to `DownloadAsync` to continue from the saved offset using `If-Range` / `Range` headers
 - ✅ **Result-Based API**: `GetAsync` returns `GetResult`; `DownloadAsync` returns `DownloadResult` — no exceptions for HTTP errors or cancellation
 - ✅ **Server Validation**: Uses `ETag` or `Last-Modified` with `If-Range` to prevent corrupt resumes if the server-side file changed
-- ✅ **Graceful Fallback**: When the server does not support range requests, `DownloadAsync` falls back to a full download
+- ✅ **Range Validation**: If the server ignores a `Range` request and returns `200 OK`, `DownloadAsync` returns a failed `DownloadResult` (rather than corrupting the file with duplicate bytes) — inspect `ErrorMessage` and retry from the beginning if needed
 
 ```csharp
 // Start a download — returns a result instead of throwing
@@ -1059,7 +1059,7 @@ A comprehensive console application demonstrating all library features including
 **Run the example**:
 
 ```bash
-dotnet run --project samples/consoleExample --framework net8.0ss
+dotnet run --project src/samples/ConsoleExample --framework net8.0
 ```
 
 **Key Features**:

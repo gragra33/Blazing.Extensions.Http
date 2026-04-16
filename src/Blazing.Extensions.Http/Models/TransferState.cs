@@ -84,7 +84,13 @@ public sealed class TransferState
     /// </param>
     public void Start(long? totalBytes, long startOffset = 0)
     {
+        if (startOffset < 0)
+            throw new ArgumentOutOfRangeException(nameof(startOffset), startOffset, "Start offset must be non-negative.");
+        if (totalBytes.HasValue && totalBytes.Value > 0 && startOffset > totalBytes.Value)
+            throw new ArgumentOutOfRangeException(nameof(startOffset), startOffset, "Start offset must not exceed total bytes.");
+
         StartTime = DateTimeOffset.Now;
+        LastCheckTime = StartTime;
         TotalBytes = totalBytes ?? 0D;
         StartOffset = startOffset;
         if (startOffset > 0)

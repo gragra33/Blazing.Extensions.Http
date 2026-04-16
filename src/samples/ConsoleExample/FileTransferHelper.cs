@@ -124,6 +124,7 @@ namespace ConsoleExample
         /// <param name="isCompactMode">Whether to use compact progress reporting.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>A <see cref="DownloadResult"/> indicating success, failure, or cancellation with a resume token.</returns>
+#pragma warning disable S107 // Methods intentionally have many parameters
         public static async Task<DownloadResult> FileDownloadAsync(IHttpClientFactory httpClientFactory, string downloadUrl, string file, ResumeToken? resumeToken, int left, int top, int interval = 100, bool isCompactMode = false, CancellationToken cancellationToken = default)
         {
             return await FileDownloadAsync(httpClientFactory, new Uri(downloadUrl), file, resumeToken, left, top, interval, isCompactMode, cancellationToken).ConfigureAwait(false);
@@ -200,6 +201,7 @@ namespace ConsoleExample
                 return await client.DownloadAsync(downloadUrl, fileStream, progress, resumeToken: null, interval, 512, latency, cancellationToken).ConfigureAwait(false);
             }
         }
+#pragma warning restore S107
 
         /// <summary>
         /// Handles a single file upload with progress and latency tracking.

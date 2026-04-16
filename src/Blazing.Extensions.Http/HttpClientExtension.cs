@@ -7,6 +7,7 @@ namespace Blazing.Extensions.Http;
 /// <summary>
 /// Provides extension methods for HttpClient with progress reporting and latency tracking capabilities.
 /// </summary>
+#pragma warning disable S107 // Methods intentionally have many parameters for fluent API compatibility
 public static class HttpClientExtension
 {
     /// <summary>
@@ -86,17 +87,7 @@ public static class HttpClientExtension
         ArgumentNullException.ThrowIfNull(client);
         ArgumentNullException.ThrowIfNull(destStream);
         ArgumentNullException.ThrowIfNull(progress);
-        
-        // Apply custom headers if provided
-        if (headers != null)
-        {
-            foreach (KeyValuePair<string, string> kvp in headers)
-            {
-                _ = client.DefaultRequestHeaders.Remove(kvp.Key);
-                client.DefaultRequestHeaders.Add(kvp.Key, kvp.Value);
-            }
-        }
-        return await InternalGetAsync(client, url, destStream, progress, interval, bufferSize, latencyTracker, cancellationToken).ConfigureAwait(false);
+        return await InternalGetAsync(client, url, destStream, progress, interval, bufferSize, latencyTracker, cancellationToken, headers).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -138,32 +129,21 @@ public static class HttpClientExtension
         int interval,
         int bufferSize,
         LatencyTracker? latencyTracker,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IDictionary<string, string>? headers = null)
     {
         HttpResponseMessage? response = null;
         try
         {
             // Capture timestamp before request for accurate TimeToFirstByte
             long requestStartTicks = Stopwatch.GetTimestamp();
-            response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+            using HttpRequestMessage request = new(HttpMethod.Get, url);
+            ApplyHeaders(request, headers);
+            response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
             {
-                string errorContent = string.Empty;
-
-                try
-                {
-                    errorContent = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException)
-                {
-                    // Ignore errors when reading error content during cancellation
-                }
-                catch (HttpRequestException)
-                {
-                    // Ignore errors when reading error content during HTTP errors
-                }
-
+                string errorContent = await ReadErrorContentSafelyAsync(response, cancellationToken).ConfigureAwait(false);
                 return GetResult.Failed(response.StatusCode, $"{response.ReasonPhrase}: {errorContent}");
             }
 
@@ -225,8 +205,11 @@ public static class HttpClientExtension
         catch (Exception ex)
 #pragma warning restore CA1031
         {
-            response?.Dispose();
             return GetResult.Failed(null, ex.Message, ex);
+        }
+        finally
+        {
+            response?.Dispose();
         }
     }
 
@@ -258,11 +241,7 @@ public static class HttpClientExtension
             using HttpRequestMessage request = new(HttpMethod.Get, url);
 
             // Apply optional custom headers
-            if (headers != null)
-            {
-                foreach (KeyValuePair<string, string> kvp in headers)
-                    request.Headers.TryAddWithoutValidation(kvp.Key, kvp.Value);
-            }
+            ApplyHeaders(request, headers);
 
             // Apply Range and If-Range headers for resume
             if (resumeToken != null)
@@ -285,23 +264,17 @@ public static class HttpClientExtension
 
             if (!response.IsSuccessStatusCode)
             {
-                string errorContent = string.Empty;
-                try { errorContent = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false); }
-                catch (OperationCanceledException)
-                {
-                    // Ignore errors when reading error content during cancellation
-                }
-                catch (HttpRequestException)
-                {
-                    // Ignore errors when reading error content during HTTP errors
-                }
+                string errorContent = await ReadErrorContentSafelyAsync(response, cancellationToken).ConfigureAwait(false);
                 return DownloadResult.Failed(response.StatusCode, $"{response.ReasonPhrase}: {errorContent}");
             }
 
             long? length = response.Content.Headers.ContentLength;
-            long? totalBytes = response.Content.Headers.ContentRange?.Length ?? length;
-
             long startOffset = resumeToken?.BytesWritten ?? 0L;
+            long? totalBytes = ResolveTotalBytes(startOffset, length, response.Content.Headers.ContentRange?.Length);
+
+            // For resume: ensure the destination stream is positioned at the resume offset
+            DownloadResult? seekError = TrySeekDestinationStream(destStream, resumeToken, response.StatusCode);
+            if (seekError != null) return seekError;
 
             Stream httpStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
 
@@ -354,8 +327,11 @@ public static class HttpClientExtension
         catch (Exception ex)
 #pragma warning restore CA1031
         {
-            response?.Dispose();
             return DownloadResult.Failed(null, ex.Message, ex);
+        }
+        finally
+        {
+            response?.Dispose();
         }
     }
 
@@ -631,19 +607,7 @@ public static class HttpClientExtension
 
             if (!response.IsSuccessStatusCode)
             {
-                string errorContent = string.Empty;
-                try
-                {
-                    errorContent = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException)
-                {
-                    // Ignore errors when reading error content during cancellation
-                }
-                catch (HttpRequestException)
-                {
-                    // Ignore errors when reading error content during HTTP errors
-                }
+                string errorContent = await ReadErrorContentSafelyAsync(response, cancellationToken).ConfigureAwait(false);
                 throw new HttpRequestException($"{response.ReasonPhrase}: {errorContent}", null, response.StatusCode);
             }
         }
@@ -652,6 +616,54 @@ public static class HttpClientExtension
             response?.Dispose();
             throw;
         }
+    }
+
+    private static void ApplyHeaders(HttpRequestMessage request, IDictionary<string, string>? headers)
+    {
+        if (headers is null) return;
+        foreach (KeyValuePair<string, string> kvp in headers)
+            request.Headers.TryAddWithoutValidation(kvp.Key, kvp.Value);
+    }
+
+    private static async Task<string> ReadErrorContentSafelyAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return string.Empty;
+        }
+        catch (HttpRequestException)
+        {
+            return string.Empty;
+        }
+    }
+
+    private static DownloadResult? TrySeekDestinationStream(Stream destStream, ResumeToken? resumeToken, HttpStatusCode statusCode)
+    {
+        if (resumeToken is null) return null;
+        if (destStream.CanSeek)
+        {
+            destStream.Seek(resumeToken.BytesWritten, SeekOrigin.Begin);
+            return null;
+        }
+        if (destStream.Position != resumeToken.BytesWritten)
+            return DownloadResult.Failed(statusCode, $"Destination stream is not seekable and its position ({destStream.Position}) does not match the resume offset ({resumeToken.BytesWritten}).");
+        return null;
+    }
+
+    /// <summary>
+    /// Resolves the total file size from response headers.
+    /// When resuming without a <c>Content-Range</c> header the <c>Content-Length</c> is only the
+    /// remaining bytes, so the full size is inferred as <paramref name="startOffset"/> + <paramref name="contentLength"/>.
+    /// </summary>
+    private static long? ResolveTotalBytes(long startOffset, long? contentLength, long? contentRangeTotal)
+    {
+        if (contentRangeTotal.HasValue) return contentRangeTotal;
+        if (startOffset > 0 && contentLength.HasValue) return startOffset + contentLength.Value;
+        return contentLength;
     }
 
     /// <summary>

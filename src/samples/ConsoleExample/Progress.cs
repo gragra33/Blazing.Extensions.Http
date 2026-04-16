@@ -105,8 +105,10 @@ internal sealed class Progress
             _ = sb.AppendLine(CultureInfo.InvariantCulture, $"Latency:     {state.Latency.PacketAvgMs:N3} ms ({state.Latency.PacketMinMs:N3} ms - {state.Latency.PacketMaxMs:N3} ms)");
         }
 
+        string bytesText = Bytes < 0D ? "unknown" : $"{Bytes:N3} {Unit}";
+        string timeText = remainingTime == TimeSpan.MinValue ? "unknown" : $"{remainingTime.TotalSeconds} seconds          ";
         _ = isDownloading
-            ? sb.AppendLine(CultureInfo.InvariantCulture, $"Remaining:    {(Bytes < 0D ? "unknown" : $"{Bytes:N3} {Unit}")} | {(remainingTime == TimeSpan.MinValue ? "unknown" : $"{remainingTime.TotalSeconds} seconds          ")}")
+            ? sb.AppendLine(CultureInfo.InvariantCulture, $"Remaining:    {bytesText} | {timeText}")
             : sb.AppendLine(new string(' ', 100)).AppendLine(new string(' ', 100));
 
         DisplayReport(sb);

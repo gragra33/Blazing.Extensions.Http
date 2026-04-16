@@ -11,6 +11,8 @@ namespace WinFormsExample;
 [AutoRegister(ServiceLifetime.Transient)]
 internal sealed class DownloadProgressControl : UserControl
 {
+    private const string SegoeUiFontFamily = "Segoe UI";
+
     private Panel _mainPanel = null!;
     private Label _fileNameLabel = null!;
     private ProgressBar _progressBar = null!;
@@ -65,7 +67,7 @@ internal sealed class DownloadProgressControl : UserControl
         // _fileNameLabel
         // 
         _fileNameLabel.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-        _fileNameLabel.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+        _fileNameLabel.Font = new Font(SegoeUiFontFamily, 10F, FontStyle.Bold);
         _fileNameLabel.Location = new Point(16, 12);
         _fileNameLabel.Name = "_fileNameLabel";
         _fileNameLabel.Size = new Size(652, 25);
@@ -80,7 +82,7 @@ internal sealed class DownloadProgressControl : UserControl
         _cancelButton.Cursor = Cursors.Hand;
         _cancelButton.FlatAppearance.BorderSize = 0;
         _cancelButton.FlatStyle = FlatStyle.Flat;
-        _cancelButton.Font = new Font("Segoe UI", 9F);
+        _cancelButton.Font = new Font(SegoeUiFontFamily, 9F);
         _cancelButton.ForeColor = Color.White;
         _cancelButton.Location = new Point(664, 12);
         _cancelButton.Name = "_cancelButton";
@@ -98,7 +100,7 @@ internal sealed class DownloadProgressControl : UserControl
         _resumeButton.Cursor = Cursors.Hand;
         _resumeButton.FlatAppearance.BorderSize = 0;
         _resumeButton.FlatStyle = FlatStyle.Flat;
-        _resumeButton.Font = new Font("Segoe UI", 9F);
+        _resumeButton.Font = new Font(SegoeUiFontFamily, 9F);
         _resumeButton.ForeColor = Color.White;
         _resumeButton.Name = "_resumeButton";
         _resumeButton.Size = new Size(100, 25);
@@ -240,7 +242,7 @@ internal sealed class DownloadProgressControl : UserControl
         var label = new Label
         {
             Text = text,
-            Font = new Font("Segoe UI", 9F),
+            Font = new Font(SegoeUiFontFamily, 9F),
             AutoSize = false,
             Size = new Size(370, 15),
             TextAlign = ContentAlignment.MiddleLeft,
