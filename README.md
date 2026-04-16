@@ -12,47 +12,49 @@ High-performance HttpClient extension methods with real-time asynchronous Get/Po
 
 ## Table of Contents
 
--   [Quick Start](#quick-start)
-    -   [Installation](#installation)
-        -   [Package Installation](#package-installation)
-        -   [Project Reference](#project-reference)
-    -   [Configuration](#configuration)
-        -   [Console Applications](#console-applications)
-        -   [WPF/WinForms Applications](#wpfwinforms-applications)
-    -   [Usage](#usage)
-        -   [File Downloads with Progress](#file-downloads-with-progress)
-        -   [File Uploads with Progress](#file-uploads-with-progress)
-        -   [Custom Headers Support](#custom-headers-support)
-        -   [Advanced Configuration](#advanced-configuration)
--   [Key Features](#key-features)
-    -   [Real-time Progress Reporting](#real-time-progress-reporting)
-    -   [Latency Tracking](#latency-tracking)
-    -   [Transfer Statistics](#transfer-statistics)
-    -   [Performance Monitoring](#performance-monitoring)
--   [Give a ⭐](#give-a-)
--   [Documentation](#documentation)
-    -   [Core Extension Methods](#core-extension-methods)
-    -   [Progress Reporting Models](#progress-reporting-models)
-    -   [Latency Tracking Models](#latency-tracking-models)
--   [API Reference](#api-reference)
-    -   [HttpClient Extensions](#httpclient-extensions)
-    -   [Transfer State Models](#transfer-state-models)
--   [Real-World Examples](#real-world-examples)
--   [Sample Applications](#sample-applications)
-    -   [ConsoleExample - Complete Implementation](#consoleexample---complete-implementation)
-    -   [WinFormsExample - Visual Download Manager](#winformsexample---visual-download-manager)
-    -   [WpfExample - MVVM Download Manager](#wpfexample---mvvm-download-manager)
--   [Best Practices](#best-practices)
-    -   [Error Handling](#error-handling)
-    -   [Memory Management](#memory-management)
-    -   [Thread Safety](#thread-safety)
--   [Requirements](#requirements)
--   [Project Structure](#project-structure)
--   [Building](#building)
--   [Contributing](#contributing)
--   [License](#license)
--   [Acknowledgments](#acknowledgments)
--   [History](#history)
+- [Quick Start](#quick-start)
+    - [Installation](#installation)
+        - [Package Installation](#package-installation)
+        - [Project Reference](#project-reference)
+    - [Configuration](#configuration)
+        - [Console Applications](#console-applications)
+        - [WPF/WinForms Applications](#wpfwinforms-applications)
+    - [Usage](#usage)
+        - [File Downloads with Progress](#file-downloads-with-progress)
+        - [File Uploads with Progress](#file-uploads-with-progress)
+        - [Custom Headers Support](#custom-headers-support)
+        - [Advanced Configuration](#advanced-configuration)
+- [Key Features](#key-features)
+    - [Real-time Progress Reporting](#real-time-progress-reporting)
+    - [Latency Tracking](#latency-tracking)
+    - [Transfer Statistics](#transfer-statistics)
+    - [Performance Monitoring](#performance-monitoring)
+    - [Resumable Downloads](#resumable-downloads)
+- [Give a ⭐](#give-a-)
+- [Documentation](#documentation)
+    - [Core Extension Methods](#core-extension-methods)
+    - [Progress Reporting Models](#progress-reporting-models)
+    - [Result Models](#result-models)
+    - [Latency Tracking Models](#latency-tracking-models)
+- [API Reference](#api-reference)
+    - [HttpClient Extensions](#httpclient-extensions)
+    - [Transfer State Models](#transfer-state-models)
+- [Real-World Examples](#real-world-examples)
+- [Sample Applications](#sample-applications)
+    - [ConsoleExample - Complete Implementation](#consoleexample---complete-implementation)
+    - [WinFormsExample - Visual Download Manager](#winformsexample---visual-download-manager)
+    - [WpfExample - MVVM Download Manager](#wpfexample---mvvm-download-manager)
+- [Best Practices](#best-practices)
+    - [Error Handling](#error-handling)
+    - [Memory Management](#memory-management)
+    - [Thread Safety](#thread-safety)
+- [Requirements](#requirements)
+- [Project Structure](#project-structure)
+- [Building](#building)
+- [Contributing](#contributing)
+- [License](#license)
+- [Acknowledgments](#acknowledgments)
+- [History](#history)
 
 ## Quick Start
 
@@ -71,7 +73,7 @@ dotnet add package Blazing.Extensions.Http
 #### Project Reference
 
 ```xml
-<PackageReference Include="Blazing.Extensions.Http" Version="2.0.0" />
+<PackageReference Include="Blazing.Extensions.Http" Version="2.1.0" />
 ```
 
 ### Configuration
@@ -389,13 +391,13 @@ Advanced progress reporting system provides detailed transfer statistics and rea
 
 **Key Features:**
 
--   ✅ **Percentage Complete**: Accurate progress calculation based on total bytes
--   ✅ **Transfer Rates**: Current, average, and maximum speed measurements
--   ✅ **Bytes Transferred**: Running totals with formatted byte units (B, KiB, MiB, GiB, TiB)
--   ✅ **Time Estimates**: Remaining time calculation based on current transfer rates
--   ✅ **Bit/Byte Rates**: Comprehensive speed reporting in both bit and byte units
--   ✅ **Customizable Intervals**: Configurable progress reporting frequency
--   ✅ **Memory Efficient**: Minimal overhead during transfer operations
+- ✅ **Percentage Complete**: Accurate progress calculation based on total bytes
+- ✅ **Transfer Rates**: Current, average, and maximum speed measurements
+- ✅ **Bytes Transferred**: Running totals with formatted byte units (B, KiB, MiB, GiB, TiB)
+- ✅ **Time Estimates**: Remaining time calculation based on current transfer rates
+- ✅ **Bit/Byte Rates**: Comprehensive speed reporting in both bit and byte units
+- ✅ **Customizable Intervals**: Configurable progress reporting frequency
+- ✅ **Memory Efficient**: Minimal overhead during transfer operations
 
 ```csharp
 // Comprehensive progress reporting
@@ -434,12 +436,12 @@ Comprehensive latency measurement system tracks network performance metrics incl
 
 **Key Features:**
 
--   ✅ **Time To First Byte**: TTFB measurement in nanoseconds for accurate network latency
--   ✅ **Per-Packet Latency**: Individual packet timing for detailed performance analysis
--   ✅ **Statistical Analysis**: Minimum, maximum, and average latency calculations
--   ✅ **High-Precision Timing**: Nanosecond-level accuracy using Stopwatch
--   ✅ **Real-time Updates**: Live latency statistics during transfer operations
--   ✅ **Optional Tracking**: Can be enabled/disabled based on performance requirements
+- ✅ **Time To First Byte**: TTFB measurement in nanoseconds for accurate network latency
+- ✅ **Per-Packet Latency**: Individual packet timing for detailed performance analysis
+- ✅ **Statistical Analysis**: Minimum, maximum, and average latency calculations
+- ✅ **High-Precision Timing**: Nanosecond-level accuracy using Stopwatch
+- ✅ **Real-time Updates**: Live latency statistics during transfer operations
+- ✅ **Optional Tracking**: Can be enabled/disabled based on performance requirements
 
 ```csharp
 // Enable comprehensive latency tracking
@@ -476,11 +478,11 @@ Detailed transfer statistics provide comprehensive insights into HTTP operation 
 
 **Statistical Measurements:**
 
--   **Current Chunk**: Real-time statistics for the most recent data transfer
--   **Total Transfer**: Cumulative statistics for the entire operation
--   **Average Rates**: Running average of transfer speeds throughout the operation
--   **Maximum Rates**: Peak performance measurements during transfer
--   **Time Analysis**: Elapsed time, estimated completion, and transfer duration
+- **Current Chunk**: Real-time statistics for the most recent data transfer
+- **Total Transfer**: Cumulative statistics for the entire operation
+- **Average Rates**: Running average of transfer speeds throughout the operation
+- **Maximum Rates**: Peak performance measurements during transfer
+- **Time Analysis**: Elapsed time, estimated completion, and transfer duration
 
 ```csharp
 // Access comprehensive transfer statistics
@@ -510,10 +512,42 @@ Built-in performance monitoring capabilities provide insights into network condi
 
 **Monitoring Features:**
 
--   **Bandwidth Utilization**: Current vs. maximum throughput analysis
--   **Transfer Consistency**: Variation analysis in transfer rates
--   **Network Performance**: Latency trends and packet timing
--   **Efficiency Metrics**: Performance ratios and optimization indicators
+- **Bandwidth Utilization**: Current vs. maximum throughput analysis
+- **Transfer Consistency**: Variation analysis in transfer rates
+- **Network Performance**: Latency trends and packet timing
+- **Efficiency Metrics**: Performance ratios and optimization indicators
+
+### Resumable Downloads
+
+Built-in pause and resume support for long-running downloads using HTTP Range Requests (RFC 7233).
+
+**Key Features:**
+
+- ✅ **Automatic Resume Token**: When a download is cancelled mid-stream, `DownloadAsync` returns a `ResumeToken` capturing the exact byte offset and server validators (`ETag` / `Last-Modified`)
+- ✅ **Range Request Support**: Pass the `ResumeToken` back to `DownloadAsync` to continue from the saved offset using `If-Range` / `Range` headers
+- ✅ **Result-Based API**: `GetAsync` returns `GetResult`; `DownloadAsync` returns `DownloadResult` — no exceptions for HTTP errors or cancellation
+- ✅ **Server Validation**: Uses `ETag` or `Last-Modified` with `If-Range` to prevent corrupt resumes if the server-side file changed
+- ✅ **Range Validation**: If the server ignores a `Range` request and returns `200 OK`, `DownloadAsync` returns a failed `DownloadResult` (rather than corrupting the file with duplicate bytes) — inspect `ErrorMessage` and retry from the beginning if needed
+
+```csharp
+// Start a download — returns a result instead of throwing
+var result = await client.DownloadAsync(url, fileStream, progress, cancellationToken: cts.Token);
+
+if (result.ResumeToken != null)
+{
+    // Download was cancelled — offer to resume
+    Console.WriteLine($"Paused at {result.ResumeToken.BytesWritten:N0} bytes.");
+
+    // Open the partial file for append and resume
+    await using var appendStream = new FileStream(filePath, FileMode.Append, FileAccess.Write);
+    var resumeResult = await client.DownloadAsync(url, appendStream, progress, result.ResumeToken, cancellationToken: cts.Token);
+    if (resumeResult.IsSuccess) Console.WriteLine("Download complete.");
+}
+else if (!result.IsSuccess)
+{
+    Console.WriteLine($"Download failed: {result.ErrorMessage}");
+}
+```
 
 ## Give a ⭐
 
@@ -527,13 +561,16 @@ The library provides comprehensive HTTP extension methods with detailed progress
 
 The core extension methods provide powerful HTTP operations with built-in progress reporting and performance monitoring capabilities.
 
-| Method                                                                                                | Description                                          | Use Case                                   |
-| ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------ |
-| `GetAsync(url, stream, progress)`                                                                     | Downloads content to stream with progress reporting  | Basic file downloads with progress         |
-| `GetAsync(url, stream, progress, interval, bufferSize, latencyTracker)`                               | Advanced download with customizable settings         | High-performance downloads with monitoring |
-| `GetAsync(url, stream, progress, interval, bufferSize, latencyTracker, headers, cancellationToken)`   | Download with custom headers and cancellation        | Authenticated downloads with full control  |
-| `PostAsync(url, filePath, progress, interval, bufferSize, latencyTracker, cancellationToken)`         | Uploads file using multipart/form-data with progress | File uploads with progress monitoring      |
-| `PostAsync(url, content, progress, interval, bufferSize, latencyTracker, headers, cancellationToken)` | Advanced upload with custom content and headers      | Complex upload scenarios with full control |
+| Method                                                                                                                | Description                                          | Use Case                                   |
+| --------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------ |
+| `GetAsync(url, stream, progress)`                                                                                     | Downloads content to stream; returns `GetResult`     | Basic file downloads with progress         |
+| `GetAsync(url, stream, progress, interval, bufferSize, latencyTracker)`                                               | Advanced download with customizable settings         | High-performance downloads with monitoring |
+| `GetAsync(url, stream, progress, interval, bufferSize, latencyTracker, headers, cancellationToken)`                   | Download with custom headers and cancellation        | Authenticated downloads with full control  |
+| `DownloadAsync(url, stream, progress)`                                                                                | Resumable download; returns `DownloadResult`         | Downloads with cancel/resume support       |
+| `DownloadAsync(url, stream, progress, resumeToken, interval, bufferSize, latencyTracker, cancellationToken)`          | Resume from a saved offset using HTTP Range Requests | Resuming a previously cancelled download   |
+| `DownloadAsync(url, stream, progress, resumeToken, interval, bufferSize, latencyTracker, headers, cancellationToken)` | Resumable download with custom headers               | Authenticated resumable downloads          |
+| `PostAsync(url, filePath, progress, interval, bufferSize, latencyTracker, cancellationToken)`                         | Uploads file using multipart/form-data with progress | File uploads with progress monitoring      |
+| `PostAsync(url, content, progress, interval, bufferSize, latencyTracker, headers, cancellationToken)`                 | Advanced upload with custom content and headers      | Complex upload scenarios with full control |
 
 ### Progress Reporting Models
 
@@ -597,6 +634,59 @@ public sealed class AverageTransfer : TransferRateBase
 }
 ```
 
+### Result Models
+
+Result types returned by all `HttpClientExtension` operations. Every method returns a result record — inspect `IsSuccess` to branch on success or failure. No try/catch required for HTTP errors or cancellation.
+
+#### ResultBase
+
+Abstract base record shared by `GetResult` and `DownloadResult`.
+
+```csharp
+public abstract record ResultBase
+{
+    public bool IsSuccess { get; }
+    public HttpStatusCode? StatusCode { get; }  // null when no HTTP response was received
+    public string? ErrorMessage { get; }        // human-readable description on failure
+    public Exception? Exception { get; }        // original exception, for diagnostics
+}
+```
+
+#### GetResult
+
+Returned by `GetAsync` operations.
+
+```csharp
+GetResult.Ok(statusCode)             // success
+GetResult.Failed(statusCode, error)  // HTTP error or cancellation
+```
+
+#### DownloadResult
+
+Returned by `DownloadAsync` operations. Adds a `ResumeToken` for mid-stream cancellation.
+
+```csharp
+DownloadResult.Ok(statusCode)                     // success
+DownloadResult.Failed(statusCode, error)          // HTTP error
+DownloadResult.Cancelled(resumeToken, exception)  // mid-stream cancellation — use ResumeToken to continue
+
+// Usage
+if (result.ResumeToken != null) { /* offer resume */ }
+```
+
+#### ResumeToken
+
+Captures the state needed to resume a cancelled download.
+
+```csharp
+public sealed record ResumeToken(
+    Uri Url,                      // resource URL
+    long BytesWritten,            // bytes already saved to the destination file
+    string? ETag,                 // ETag for If-Range validation (or null)
+    DateTimeOffset? LastModified  // Last-Modified fallback (or null)
+);
+```
+
 ### Latency Tracking Models
 
 High-precision latency measurement and statistical analysis for network performance monitoring.
@@ -637,18 +727,19 @@ Extension methods that enhance HttpClient with progress reporting and latency tr
 #### Download Methods
 
 ```csharp
-// Basic download with progress
-Task GetAsync(
+// Download with progress — returns GetResult; never throws on HTTP errors or cancellation
+Task<GetResult> GetAsync(
     this HttpClient client,
     string url,
     Stream destStream,
     IProgress<TransferState> progress,
     int interval = 100,
     int bufferSize = 512,
-    LatencyTracker? latencyTracker = null)
+    LatencyTracker? latencyTracker = null,
+    CancellationToken cancellationToken = default)
 
-// Advanced download with headers
-Task GetAsync(
+// Download with custom headers
+Task<GetResult> GetAsync(
     this HttpClient client,
     string url,
     Stream destStream,
@@ -656,19 +747,60 @@ Task GetAsync(
     int interval,
     int bufferSize,
     LatencyTracker? latencyTracker,
-    IDictionary<string, string>? headers)
+    IDictionary<string, string>? headers,
+    CancellationToken cancellationToken = default)
 ```
 
-**Parameters:**
+#### Resumable Download Methods
 
--   `client`: HttpClient instance to use for the request
--   `url`: URL to download from
--   `destStream`: Destination stream for downloaded content
--   `progress`: Progress reporter for transfer state updates
--   `interval`: Progress reporting interval in milliseconds (default: 100)
--   `bufferSize`: Buffer size for stream operations (default: 512)
--   `latencyTracker`: Optional latency tracker for performance monitoring
--   `headers`: Optional custom headers for the request
+```csharp
+// Resumable download — returns DownloadResult; ResumeToken is set when cancelled mid-stream
+Task<DownloadResult> DownloadAsync(
+    this HttpClient client,
+    Uri url,
+    Stream destStream,
+    IProgress<TransferState> progress,
+    ResumeToken? resumeToken = null,
+    int interval = 100,
+    int bufferSize = 512,
+    LatencyTracker? latencyTracker = null,
+    CancellationToken cancellationToken = default)
+
+// Resumable download with custom headers
+Task<DownloadResult> DownloadAsync(
+    this HttpClient client,
+    Uri url,
+    Stream destStream,
+    IProgress<TransferState> progress,
+    ResumeToken? resumeToken,
+    int interval,
+    int bufferSize,
+    LatencyTracker? latencyTracker,
+    IDictionary<string, string>? headers,
+    CancellationToken cancellationToken = default)
+```
+
+**Parameters (`DownloadAsync`):**
+
+- `resumeToken`: Optional token from `DownloadResult.Cancelled`; when provided, sends a `Range` request to continue from the saved byte offset
+- All other parameters are identical to `GetAsync`
+
+**Return Value (`DownloadResult`):**
+
+- `IsSuccess == true` — download completed
+- `ResumeToken != null` — download was cancelled mid-stream; pass the token back to `DownloadAsync` to resume
+- `IsSuccess == false && ResumeToken == null` — HTTP error or non-resumable failure; inspect `ErrorMessage`
+
+**Common Parameters:**
+
+- `client`: HttpClient instance to use for the request
+- `url`: URL to download from
+- `destStream`: Destination stream for downloaded content
+- `progress`: Progress reporter for transfer state updates
+- `interval`: Progress reporting interval in milliseconds (default: 100)
+- `bufferSize`: Buffer size for stream operations (default: 512)
+- `latencyTracker`: Optional latency tracker for performance monitoring
+- `headers`: Optional custom headers for the request
 
 #### Upload Methods
 
@@ -915,26 +1047,29 @@ public record UploadResult(string DocumentId);
 ```
 
 ## Sample Applications
+
 The included sample applications provide practical, real-world examples of HTTP operations with comprehensive monitoring across different application types. All samples feature identical visual designs showcasing detailed progress reporting, latency tracking, and overall performance statistics.
 
 ### ConsoleExample - Complete Implementation
+
 A comprehensive console application demonstrating all library features including downloads, uploads, progress reporting, and latency tracking with parallel processing.
 
 **Location**: `samples/ConsoleExample/`
 
 **Run the example**:
+
 ```bash
-dotnet run --project samples/consoleExample --framework net8.0ss
-````
+dotnet run --project src/samples/ConsoleExample --framework net8.0
+```
 
 **Key Features**:
 
--   **Interactive Menu**: Choose between download and upload operations
--   **Parallel Downloads**: Multiple simultaneous downloads with individual progress bars
--   **Real-time Progress**: Live console updates with transfer statistics
--   **Latency Monitoring**: Comprehensive latency tracking and reporting
--   **Error Handling**: Robust error handling with detailed error messages
--   **Performance Metrics**: Detailed performance analysis and statistics
+- **Interactive Menu**: Choose between download and upload operations
+- **Parallel Downloads**: Multiple simultaneous downloads with individual progress bars
+- **Real-time Progress**: Live console updates with transfer statistics
+- **Latency Monitoring**: Comprehensive latency tracking and reporting
+- **Error Handling**: Robust error handling with detailed error messages
+- **Performance Metrics**: Detailed performance analysis and statistics
 
 **Core Implementation**:
 
@@ -1048,12 +1183,13 @@ dotnet run --project samples/WinFormsExample --framework net8.0-windows
 
 **Key Features**:
 
--   **Modern UI Design**: Clean, professional interface with styled buttons and progress controls
--   **Parallel Downloads**: 4 simultaneous downloads with individual progress tracking
--   **Dependency Injection**: Uses `Blazing.Extensions.DependencyInjection` for automatic service registration
--   **Real-time Statistics**: Comprehensive performance dashboard with 8 statistics cards
--   **Start/Stop Control**: Full control over download operations with cancellation support
--   **Auto-cleanup**: Temporary files are automatically managed
+- **Modern UI Design**: Clean, professional interface with styled buttons and progress controls
+- **Parallel Downloads**: 4 simultaneous downloads with individual progress tracking
+- **Dependency Injection**: Uses `Blazing.Extensions.DependencyInjection` for automatic service registration
+- **Real-time Statistics**: Comprehensive performance dashboard with 8 statistics cards
+- **Start/Stop Control**: Full control over download operations with cancellation support
+- **Cancel & Resume**: Per-download cancel button with automatic `ResumeToken` generation; Resume button continues from the exact byte offset
+- **Auto-cleanup**: Temporary files are automatically managed
 
 **Service Registration** (`Program.cs`):
 
@@ -1096,29 +1232,27 @@ internal static class Program
 
 ```csharp
 [AutoRegister(ServiceLifetime.Singleton)]
-public class DownloadService
+public class DownloadService(IHttpClientFactory httpClientFactory)
 {
-    private readonly IHttpClientFactory _httpClientFactory;
-
-    public DownloadService(IHttpClientFactory httpClientFactory)
-    {
-        _httpClientFactory = httpClientFactory;
-    }
-
-    public async Task DownloadFileAsync(
+    public async Task<DownloadResult> DownloadFileAsync(
         string url,
         string destinationPath,
         IProgress<TransferState> progress,
         LatencyTracker latencyTracker,
+        ResumeToken? resumeToken = null,
         CancellationToken cancellationToken = default)
     {
-        using var client = _httpClientFactory.CreateClient("DownloadClient");
-        await using var fileStream = File.Create(destinationPath);
+        using var client = httpClientFactory.CreateClient("DownloadClient");
 
-        await client.GetAsync(
+        // Open for append when resuming; create a new file otherwise
+        var fileMode = resumeToken != null ? FileMode.Append : FileMode.Create;
+        await using var fileStream = new FileStream(destinationPath, fileMode, FileAccess.Write);
+
+        return await client.DownloadAsync(
             url,
             fileStream,
             progress,
+            resumeToken,
             interval: 100,
             bufferSize: 65536, // 64KB buffer
             latencyTracker,
@@ -1155,12 +1289,12 @@ public class MainForm : Form
 
 **Visual Features**:
 
--   Modern flat design with styled buttons (Start: blue, Stop: red)
--   Statistics dashboard with 8 performance cards showing real-time metrics
--   Individual download progress controls with detailed transfer information
--   Scrollable downloads list with professional styling
--   Progress bars with smooth animations and percentage display
--   Responsive layout adapting to window size
+- Modern flat design with styled buttons (Start: blue, Stop: red)
+- Statistics dashboard with 8 performance cards showing real-time metrics
+- Individual download progress controls with detailed transfer information
+- Scrollable downloads list with professional styling
+- Progress bars with smooth animations and percentage display
+- Responsive layout adapting to window size
 
 ### WpfExample - MVVM Download Manager
 
@@ -1176,12 +1310,13 @@ dotnet run --project samples/WpfExample --framework net8.0-windows
 
 **Key Features**:
 
--   **MVVM Architecture**: Clean separation of concerns using `CommunityToolkit.Mvvm`
--   **Dependency Injection**: Uses `Blazing.Extensions.DependencyInjection` for automatic service registration
--   **Parallel Downloads**: 4 simultaneous downloads with individual progress tracking
--   **Data Binding**: Full WPF data binding with `ObservableObject` and `RelayCommand`
--   **Real-time Statistics**: Comprehensive performance dashboard
--   **Visual States**: Color-coded completion states and professional styling
+- **MVVM Architecture**: Clean separation of concerns using `CommunityToolkit.Mvvm`
+- **Dependency Injection**: Uses `Blazing.Extensions.DependencyInjection` for automatic service registration
+- **Parallel Downloads**: 4 simultaneous downloads with individual progress tracking
+- **Data Binding**: Full WPF data binding with `ObservableObject` and `RelayCommand`
+- **Real-time Statistics**: Comprehensive performance dashboard
+- **Cancel & Resume**: Per-download cancel button with automatic `ResumeToken` generation; Resume button continues from the exact byte offset
+- **Visual States**: Color-coded completion states and professional styling
 
 **App.xaml.cs - Dependency Injection Setup**:
 
@@ -1222,29 +1357,27 @@ public partial class App : Application
 
 ```csharp
 [AutoRegister(ServiceLifetime.Singleton)]
-public class DownloadService
+public sealed class DownloadService(IHttpClientFactory httpClientFactory)
 {
-    private readonly IHttpClientFactory _httpClientFactory;
-
-    public DownloadService(IHttpClientFactory httpClientFactory)
-    {
-        _httpClientFactory = httpClientFactory;
-    }
-
-    public async Task DownloadFileAsync(
+    public async Task<DownloadResult> DownloadFileAsync(
         string url,
         string destinationPath,
         IProgress<TransferState> progress,
         LatencyTracker latencyTracker,
+        ResumeToken? resumeToken = null,
         CancellationToken cancellationToken = default)
     {
-        using var client = _httpClientFactory.CreateClient("DownloadClient");
-        await using var fileStream = File.Create(destinationPath);
+        using var client = httpClientFactory.CreateClient("DownloadClient");
 
-        await client.GetAsync(
+        // Open for append when resuming; create a new file otherwise
+        var fileMode = resumeToken != null ? FileMode.Append : FileMode.Create;
+        await using var fileStream = new FileStream(destinationPath, fileMode, FileAccess.Write);
+
+        return await client.DownloadAsync(
             url,
             fileStream,
             progress,
+            resumeToken,
             interval: 100,
             bufferSize: 65536, // 64KB buffer
             latencyTracker,
@@ -1333,34 +1466,40 @@ public partial class MainViewModel : ObservableObject
 
 **Visual Design**:
 
--   Modern WPF styling with data binding and MVVM patterns
--   Statistics dashboard with 8 real-time performance cards
--   Individual download progress items with detailed transfer information
--   Professional color-coded states (green for success, red for errors)
--   Responsive XAML layout with proper data binding
--   Command pattern implementation with RelayCommand
+- Modern WPF styling with data binding and MVVM patterns
+- Statistics dashboard with 8 real-time performance cards
+- Individual download progress items with detailed transfer information
+- Professional color-coded states (green for success, red for errors)
+- Responsive XAML layout with proper data binding
+- Command pattern implementation with RelayCommand
 
 **Dependency Injection Integration**:
 
 Both WinForms and WPF examples demonstrate proper DI patterns:
+
 - **WinFormsExample**: Traditional ServiceCollection pattern in Program.cs with static ServiceProvider
 - **WpfExample**: Blazing.Extensions.DependencyInjection integration in App.xaml.cs with `ConfigureServices` extension
 
 **Common Features Across All Samples**:
+
 - ✅ Parallel download support
 - ✅ Real-time progress reporting
 - ✅ Latency tracking and TTFB measurements
 - ✅ Transfer rate statistics (current/average/maximum)
 - ✅ Time estimation (elapsed/remaining)
 - ✅ Visual feedback (progress bars, colors)
-- ✅ Start/stop control
+- ✅ Start/stop/cancel control
+- ✅ **Cancel & Resume** — mid-stream cancellation with `ResumeToken` for seamless continuation
 - ✅ Error handling and visual error states
 - ✅ Automatic resource cleanup
+- ✅ Result-based API — no try/catch required for HTTP errors or cancellation
 
 ## Best Practices
+
 Follow these recommended patterns for optimal performance, reliability, and maintainability when using the library.
 
 ### Error Handling
+
 Implement comprehensive error handling for network operations, file I/O, and progress reporting scenarios.
 
 ```csharp
@@ -1421,7 +1560,7 @@ public async Task<bool> SafeDownloadAsync(string url, string filePath)
         }
     }
 }
-````
+```
 
 ### Memory Management
 
@@ -1538,8 +1677,8 @@ public async Task ConcurrentDownloadsAsync()
 
 ## Requirements
 
--   .NET 8.0, .NET 9.0 or .NET 10.0
--   Microsoft.Extensions.Http 8.0.0 or later (for IHttpClientFactory support)
+- .NET 8.0, .NET 9.0 or .NET 10.0
+- Microsoft.Extensions.Http 8.0.0 or later (for IHttpClientFactory support)
 
 ## Project Structure
 
@@ -1549,14 +1688,18 @@ The solution is organized with clear separation between core functionality and s
 Blazing.Extensions.Http/                    # Solution root
 ├── src/
 │   └── Blazing.Extensions.Http/            # Main HTTP extensions library
-│       ├── Models/                         # Transfer and latency models
+│       ├── Models/                         # Transfer, result, and latency models
 │       │   ├── TransferState.cs            # Main transfer state tracking
 │       │   ├── LatencyTracker.cs           # Network latency measurement
 │       │   ├── TransferRate.cs             # Transfer rate calculations
 │       │   ├── AverageTransferRate.cs      # Running average calculations
 │       │   ├── TransferRateBase.cs         # Base transfer rate functionality
 │       │   ├── ByteUnit.cs                 # Byte unit enumeration
-│       │   └── BitUnit.cs                  # Bit unit enumeration
+│       │   ├── BitUnit.cs                  # Bit unit enumeration
+│       │   ├── ResultBase.cs               # Abstract base for operation results
+│       │   ├── GetResult.cs                # Result for GetAsync operations
+│       │   ├── DownloadResult.cs           # Result for DownloadAsync (carries ResumeToken on cancel)
+│       │   └── ResumeToken.cs              # Captures byte offset and server validators for resume
 │       └── HttpClientExtension.cs          # Core extension methods
 ├── samples/
 │   ├── ConsoleExample/                     # Console application demo
@@ -1583,6 +1726,15 @@ Blazing.Extensions.Http/                    # Solution root
 │       │   └── MainWindow.xaml.cs          # Main window code-behind
 │       └── Converters/
 │           └── InverseBoolConverter.cs     # Boolean inversion converter
+├── tests/
+│   └── Blazing.Extensions.Http.Tests/      # Test project
+│       ├── Fixtures/                       # Shared test infrastructure
+│       │   ├── FakeHttpHandler.cs          # In-memory HTTP handler for isolated tests
+│       │   └── CancellationStream.cs       # Stream that cancels mid-read
+│       ├── UnitTests/
+│       │   └── Models/                     # 255 unit tests across all model types
+│       └── IntegrationTests/               # End-to-end tests using FakeHttpHandler
+│           └── HttpClientExtensionTests.cs # GetAsync, DownloadAsync, and resume scenarios
 ├── LICENSE                                 # MIT License
 └── README.md                               # This file
 ```
@@ -1637,30 +1789,42 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Acknowledgments
 
--   Built on Microsoft's excellent [HttpClient](https://docs.microsoft.com/en-us/dotnet/api/system.net.http.httpclient) and [IHttpClientFactory](https://docs.microsoft.com/en-us/dotnet/api/microsoft.extensions.http.ihttpclientfactory) implementations
--   Inspired by the need for comprehensive HTTP operation monitoring in modern .NET applications
--   High-precision timing implemented using [Stopwatch](https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.stopwatch) for accurate performance measurements
+- Built on Microsoft's excellent [HttpClient](https://docs.microsoft.com/en-us/dotnet/api/system.net.http.httpclient) and [IHttpClientFactory](https://docs.microsoft.com/en-us/dotnet/api/microsoft.extensions.http.ihttpclientfactory) implementations
+- Inspired by the need for comprehensive HTTP operation monitoring in modern .NET applications
+- High-precision timing implemented using [Stopwatch](https://docs.microsoft.com/en-us/dotnet/api/system.diagnostics.stopwatch) for accurate performance measurements
 
 ## History
 
+### V2.1.0 - 16 April 2026
+
+- **Resumable Downloads** — new `DownloadAsync` with cancel/resume via HTTP Range Requests; `DownloadResult.Cancelled` carries a `ResumeToken` to continue from the exact byte offset
+- **Result-Based API** — `GetAsync` returns `Task<GetResult>`; `DownloadAsync` returns `Task<DownloadResult>`; no exceptions for HTTP errors or cancellation
+- **New Models** — `ResultBase`, `GetResult`, `DownloadResult`, `ResumeToken`
+- **Updated Samples** — all three samples (Console, WinForms, WPF) updated with cancel/resume UI and corrected statistics counters
+- **Test Restructure** — reorganised into `UnitTests/`, `IntegrationTests/`, and `Fixtures/` folders; 255 tests passing across net8.0, net9.0, and net10.0
+
+### Breaking Changes
+
+- `GetAsync` now returns `Task<GetResult>` instead of `Task` — callers must check `result.IsSuccess` instead of catching exceptions
+
 ### V2.0.0 - 17 November 2025
 
- -  **.NET 10.0 Support** - Full compatibility with .NET 10.0
- -  **Test Coverage** - Added unit tests for core functionalities
+- **.NET 10.0 Support** - Full compatibility with .NET 10.0
+- **Test Coverage** - Added unit tests for core functionalities
 
 ### V1.0.0 (.Net 8.0+)
 
--   **Core HTTP Extensions** - Added comprehensive HttpClient extension methods for downloads and uploads
--   **Progress Reporting** - Implemented detailed progress reporting with TransferState model
--   **Latency Tracking** - Added high-precision latency measurement with LatencyTracker
--   **Transfer Statistics** - Comprehensive transfer rate calculations with multiple unit representations
--   **Custom Headers** - Support for custom headers in both download and upload operations
--   **Multipart Uploads** - Built-in multipart/form-data support for file uploads
--   **Performance Monitoring** - Real-time performance statistics including TTFB and packet latency
--   **Sample Applications** - Created three comprehensive sample applications:
-    -   **ConsoleExample** - Interactive console app with parallel downloads
-    -   **WinFormsExample** - Visual download manager with DI integration
-    -   **WpfExample** - MVVM-based download manager using CommunityToolkit.Mvvm
--   **Memory Efficiency** - Optimized for minimal memory overhead during transfer operations
--   **Thread Safety** - Thread-safe progress reporting and state management
--   **Comprehensive API** - Full API coverage for common HTTP operation scenarios
+- **Core HTTP Extensions** - Added comprehensive HttpClient extension methods for downloads and uploads
+- **Progress Reporting** - Implemented detailed progress reporting with TransferState model
+- **Latency Tracking** - Added high-precision latency measurement with LatencyTracker
+- **Transfer Statistics** - Comprehensive transfer rate calculations with multiple unit representations
+- **Custom Headers** - Support for custom headers in both download and upload operations
+- **Multipart Uploads** - Built-in multipart/form-data support for file uploads
+- **Performance Monitoring** - Real-time performance statistics including TTFB and packet latency
+- **Sample Applications** - Created three comprehensive sample applications:
+    - **ConsoleExample** - Interactive console app with parallel downloads
+    - **WinFormsExample** - Visual download manager with DI integration
+    - **WpfExample** - MVVM-based download manager using CommunityToolkit.Mvvm
+- **Memory Efficiency** - Optimized for minimal memory overhead during transfer operations
+- **Thread Safety** - Thread-safe progress reporting and state management
+- **Comprehensive API** - Full API coverage for common HTTP operation scenarios

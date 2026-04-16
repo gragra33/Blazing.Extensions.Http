@@ -1,4 +1,4 @@
-namespace Blazing.Extensions.Http.Tests.Models;
+namespace Blazing.Extensions.Http.Tests.UnitTests.Models;
 
 public class TransferStateTests
 {
@@ -191,5 +191,78 @@ public class TransferStateTests
 
         // Assert
         state.TTFB.Should().Be(ttfb);
+    }
+
+    // ── startOffset pre-seeding tests ────────────────────────────────────────
+
+    [Fact]
+    public void Start_WithZeroOffset_DoesNotPreSeedTransferred()
+    {
+        // Arrange
+        var state = new TransferState();
+
+        // Act
+        state.Start(1000, 0);
+
+        // Assert
+        state.StartOffset.Should().Be(0);
+        state.Total.Transferred.Should().Be(0);
+    }
+
+    [Fact]
+    public void Start_WithNonZeroOffset_PreSeedsTransferred()
+    {
+        // Arrange
+        var state = new TransferState();
+
+        // Act
+        state.Start(1000, 400);
+
+        // Assert
+        state.StartOffset.Should().Be(400);
+        state.Total.Transferred.Should().Be(400);
+    }
+
+    [Fact]
+    public void Start_WithOffset_ProgressPercentageReflectsFullDownload()
+    {
+        // Arrange
+        var state = new TransferState();
+
+        // Act
+        state.Start(1000, 400);
+
+        // Assert — 400 out of 1000 = 40 %
+        state.CalcProgressPercentage().Should().BeApproximately(0.4, 0.001);
+    }
+
+    [Fact]
+    public void Start_WithOffset_CalcRemainingSizeReflectsRemainder()
+    {
+        // Arrange
+        var state = new TransferState();
+
+        // Act — 3072 total, 1024 already transferred
+        state.Start(3072, 1024);
+
+        // Assert — remaining = 2048 bytes = 2 KiB
+        var (bytes, unit) = state.CalcRemainingSize();
+        bytes.Should().BeApproximately(2, 0.001);
+        unit.Should().Be(ByteUnit.KiB);
+    }
+
+    [Fact]
+    public void Start_OneArgBackwardCompatibility_HasZeroStartOffset()
+    {
+        // Arrange — verify the one-arg call (default startOffset = 0) is backward-compatible
+        var state = new TransferState();
+
+        // Act
+        state.Start(500);
+
+        // Assert
+        state.StartOffset.Should().Be(0);
+        state.Total.Transferred.Should().Be(0);
+        state.TotalBytes.Should().Be(500);
     }
 }

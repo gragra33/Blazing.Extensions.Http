@@ -1,4 +1,4 @@
-namespace Blazing.Extensions.Http.Tests.Models;
+namespace Blazing.Extensions.Http.Tests.UnitTests.Models;
 
 public class TransferTests
 {

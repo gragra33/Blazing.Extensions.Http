@@ -105,8 +105,10 @@ internal sealed class Progress
             _ = sb.AppendLine(CultureInfo.InvariantCulture, $"Latency:     {state.Latency.PacketAvgMs:N3} ms ({state.Latency.PacketMinMs:N3} ms - {state.Latency.PacketMaxMs:N3} ms)");
         }
 
+        string bytesText = Bytes < 0D ? "unknown" : $"{Bytes:N3} {Unit}";
+        string timeText = remainingTime == TimeSpan.MinValue ? "unknown" : $"{remainingTime.TotalSeconds} seconds          ";
         _ = isDownloading
-            ? sb.AppendLine(CultureInfo.InvariantCulture, $"Remaining:    {(Bytes < 0D ? "unknown" : $"{Bytes:N3} {Unit}")} | {(remainingTime == TimeSpan.MinValue ? "unknown" : $"{remainingTime.TotalSeconds} seconds          ")}")
+            ? sb.AppendLine(CultureInfo.InvariantCulture, $"Remaining:    {bytesText} | {timeText}")
             : sb.AppendLine(new string(' ', 100)).AppendLine(new string(' ', 100));
 
         DisplayReport(sb);
@@ -118,5 +120,41 @@ internal sealed class Progress
         Console.SetCursorPosition(cursorPosition.Left, cursorPosition.Top);
         Console.WriteLine(sb);
         InternalLock.Release();
+    }
+
+    /// <summary>Writes a "Cancelled" status at the given console row.</summary>
+    /// <param name="row">The console row (top position) to write to.</param>
+    public static void MarkCancelled(int row)
+    {
+        InternalLock.Wait();
+        try
+        {
+            Console.SetCursorPosition(0, row);
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.Write("Cancelled" + new string(' ', 60));
+            Console.ResetColor();
+        }
+        finally
+        {
+            InternalLock.Release();
+        }
+    }
+
+    /// <summary>Writes a "Resuming..." status at the given console row.</summary>
+    /// <param name="row">The console row (top position) to write to.</param>
+    public static void MarkResuming(int row)
+    {
+        InternalLock.Wait();
+        try
+        {
+            Console.SetCursorPosition(0, row);
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.Write("Resuming..." + new string(' ', 60));
+            Console.ResetColor();
+        }
+        finally
+        {
+            InternalLock.Release();
+        }
     }
 }

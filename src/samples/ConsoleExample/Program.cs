@@ -4,6 +4,7 @@
 
 namespace ConsoleExample;
 
+using Blazing.Extensions.Http.Models;
 using Microsoft.Extensions.DependencyInjection;
 
 /// <summary>
@@ -11,6 +12,10 @@ using Microsoft.Extensions.DependencyInjection;
 /// </summary>
 internal static class Program
 {
+#pragma warning disable S1075 // Hardcoded URI in sample application
+    private const string SampleDownloadUrl = "https://download.visualstudio.microsoft.com/download/pr/89a2923a-18df-4dce-b069-51e687b04a53/9db4348b561703e622de7f03b1f11e93/dotnet-sdk-7.0.203-win-x64.exe";
+#pragma warning restore S1075
+
     /// <summary>
     /// Main entry point for the console application.
     /// </summary>
@@ -21,7 +26,7 @@ internal static class Program
         IHttpClientFactory httpClientFactory = InitializeHttpClientFactory();
 
         // Example download URL and file paths for saving downloaded files
-        string url = "https://download.visualstudio.microsoft.com/download/pr/89a2923a-18df-4dce-b069-51e687b04a53/9db4348b561703e622de7f03b1f11e93/dotnet-sdk-7.0.203-win-x64.exe";
+        string url = SampleDownloadUrl;
         string saveFile1 = "ac95c389-31ae-416f-a8cd-fdfb5969d528.cbz";
         string saveFile2 = "ac95c389-31ae-416f-a8cd-fdfb5969d529.cbz";
         string saveFile3 = "ac95c389-31ae-416f-a8cd-fdfb5969d527.cbz";
@@ -44,13 +49,13 @@ internal static class Program
 
         bool success = true;
         int reportInterval = 250;
+        string[] saveFiles = [saveFile1, saveFile2, saveFile3, saveFile4];
 
         try
         {
             if (choice == '1')
             {
-                // Download multiple files in parallel
-                await FileTransferHelper.RunDownloadAsync(httpClientFactory, new Uri(url), [saveFile1, saveFile2, saveFile3, saveFile4], reportInterval).ConfigureAwait(false);
+                success = await RunDownloadSessionAsync(httpClientFactory, new Uri(url), saveFiles, reportInterval).ConfigureAwait(false);
             }
             else if (choice == '2')
             {
@@ -100,6 +105,62 @@ internal static class Program
     }
 
     /// <summary>
+    /// Runs the download session: downloads all files, shows a per-file summary, and loops to resume any cancelled downloads.
+    /// </summary>
+    /// <param name="httpClientFactory">Factory used to create HTTP clients.</param>
+    /// <param name="url">The URL to download from.</param>
+    /// <param name="saveFiles">Destination file paths, one per parallel download.</param>
+    /// <param name="reportInterval">Progress report interval in milliseconds.</param>
+    /// <returns><see langword="true"/> if all files completed successfully.</returns>
+    private static async Task<bool> RunDownloadSessionAsync(
+        IHttpClientFactory httpClientFactory, Uri url, string[] saveFiles, int reportInterval)
+    {
+        DownloadResult[] results = await RunWithConsoleCancellationAsync(
+            ct => FileTransferHelper.RunDownloadAsync(httpClientFactory, url, saveFiles, reportInterval, ct)).ConfigureAwait(false);
+
+        PrintDownloadSummary(results, saveFiles, complete: false);
+
+        while (results.Any(r => !r.IsSuccess && r.ResumeToken != null))
+        {
+#pragma warning disable CA1303
+            Console.Write("\nSome downloads were cancelled. Resume? (y/n): ");
+#pragma warning restore CA1303
+            char answer = Console.ReadKey().KeyChar;
+            Console.WriteLine();
+            if (answer != 'y' && answer != 'Y') break;
+
+            results = await RunWithConsoleCancellationAsync(
+                ct => FileTransferHelper.ResumeDownloadsAsync(httpClientFactory, results, saveFiles, reportInterval, ct)).ConfigureAwait(false);
+
+            PrintDownloadSummary(results, saveFiles, complete: true);
+        }
+
+        return results.All(r => r.IsSuccess);
+    }
+
+    /// <summary>Prints per-file download status to the console.</summary>
+    /// <param name="results">The download results to summarise.</param>
+    /// <param name="saveFiles">Destination file paths used to compute the cursor row.</param>
+    /// <param name="complete">
+    /// When <see langword="true"/> appends trailing spaces to overwrite a shorter previous status.
+    /// </param>
+    private static void PrintDownloadSummary(DownloadResult[] results, string[] saveFiles, bool complete)
+    {
+        Console.SetCursorPosition(0, 8 + saveFiles.Length + 1);
+        for (int i = 0; i < results.Length; i++)
+        {
+            DownloadResult r = results[i];
+            string trail = complete ? "     " : string.Empty;
+            if (r.IsSuccess)
+                Console.WriteLine($"  File {i + 1}: Complete{trail}");
+            else if (r.ResumeToken != null)
+                Console.WriteLine($"  File {i + 1}: Cancelled (resumable at {r.ResumeToken.BytesWritten:N0} bytes)");
+            else
+                Console.WriteLine($"  File {i + 1}: Failed - {r.ErrorMessage}");
+        }
+    }
+
+    /// <summary>
     /// Sets up the dependency injection container and registers HttpClientFactory.
     /// </summary>
     /// <returns>An instance of IHttpClientFactory for creating HTTP clients.</returns>
@@ -109,5 +170,33 @@ internal static class Program
         builder.AddHttpClient();
         ServiceProvider serviceProvider = builder.BuildServiceProvider();
         return serviceProvider.GetRequiredService<IHttpClientFactory>();
+    }
+
+    /// <summary>
+    /// Runs a console operation with Ctrl+C mapped to a scoped <see cref="CancellationToken"/>.
+    /// </summary>
+    /// <typeparam name="T">The operation result type.</typeparam>
+    /// <param name="operation">The operation to execute.</param>
+    /// <returns>The operation result.</returns>
+    private static async Task<T> RunWithConsoleCancellationAsync<T>(Func<CancellationToken, Task<T>> operation)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+
+        using CancellationTokenSource cts = new();
+        ConsoleCancelEventHandler cancelHandler = (_, e) =>
+        {
+            e.Cancel = true;
+            cts.Cancel();
+        };
+
+        Console.CancelKeyPress += cancelHandler;
+        try
+        {
+            return await operation(cts.Token).ConfigureAwait(false);
+        }
+        finally
+        {
+            Console.CancelKeyPress -= cancelHandler;
+        }
     }
 }

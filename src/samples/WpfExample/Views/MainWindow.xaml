@@ -15,6 +15,7 @@
     
     <Window.Resources>
         <converters:InverseBoolConverter x:Key="InverseBoolConverter"/>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
         <!-- Button Styles -->
         <Style x:Key="StartButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="#0078D7"/>
@@ -101,6 +102,37 @@
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Background" Value="#C50F1F"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#CCCCCC"/>
+                    <Setter Property="Cursor" Value="Arrow"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="ResumeButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#FF8C00"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="Normal"/>
+            <Setter Property="Height" Value="25"/>
+            <Setter Property="Width" Value="100"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="2">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#E07B00"/>
                 </Trigger>
                 <Trigger Property="IsEnabled" Value="False">
                     <Setter Property="Background" Value="#CCCCCC"/>
@@ -336,15 +368,25 @@
                                                         <DataTrigger Binding="{Binding IsError}" Value="True">
                                                             <Setter Property="Foreground" Value="Red"/>
                                                         </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsCancelled}" Value="True">
+                                                            <Setter Property="Foreground" Value="#FF8C00"/>
+                                                        </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
                                             </TextBlock.Style>
                                         </TextBlock>
-                                        <Button Grid.Column="1"
-                                                Content="Cancel"
-                                                Style="{StaticResource CancelButtonStyle}"
-                                                Command="{Binding CancelDownloadCommand}"
-                                                IsEnabled="{Binding CanCancel}"/>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                                            <Button Content="Resume"
+                                                    Style="{StaticResource ResumeButtonStyle}"
+                                                    Margin="0,0,5,0"
+                                                    Command="{Binding DataContext.ResumeDownloadCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}"
+                                                    Visibility="{Binding CanResume, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                            <Button Content="Cancel"
+                                                    Style="{StaticResource CancelButtonStyle}"
+                                                    Command="{Binding CancelDownloadCommand}"
+                                                    IsEnabled="{Binding CanCancel}"/>
+                                        </StackPanel>
                                     </Grid>
 
                                     <!-- Progress Bar -->

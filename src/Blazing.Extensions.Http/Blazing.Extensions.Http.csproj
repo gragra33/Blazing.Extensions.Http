@@ -14,8 +14,16 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/gragra33/Blazing.Extensions.Http</PackageProjectUrl>
     <Copyright>Copyright (c) 2025 Graeme Grant</Copyright>
-    <PackageReleaseNotes>Version 1.0.0: Complete HttpClient extension library with comprehensive progress reporting, latency tracking, and transfer statistics</PackageReleaseNotes>
+    <PackageReleaseNotes>Version 2.1.0: Resumable downloads via DownloadAsync with ResumeToken and HTTP Range Requests; result-based API (GetResult/DownloadResult); updated Console, WinForms, and WPF samples with cancel/resume UI; 255 passing tests across net8.0, net9.0, and net10.0</PackageReleaseNotes>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+
+    <!-- Default versioning (can be overridden in individual projects) -->
+    <ApplicationDisplayVersion>2.1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>2</ApplicationVersion>
+    <AssemblyVersion>2.1.0.0</AssemblyVersion>
+    <FileVersion>2.1.0.0</FileVersion>
+    <Version>2.1.0</Version>
+    
   </PropertyGroup>
 
   <ItemGroup>

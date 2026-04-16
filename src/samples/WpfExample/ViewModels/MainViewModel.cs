@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using Blazing.Extensions.DependencyInjection;
@@ -19,6 +20,7 @@ public partial class MainViewModel : ObservableObject
     private readonly DownloadService _downloadService;
     private CancellationTokenSource? _globalCancellationTokenSource;
     private List<CancellationTokenSource> _individualCancellationTokenSources = new();
+    private readonly List<string> _destinationPaths = [];
 
     [ObservableProperty]
     private bool _isDownloading;
@@ -56,18 +58,22 @@ public partial class MainViewModel : ObservableObject
     private double _totalSpeed;
     private double _totalLatency;
     private int _latencyCount;
-    private DateTime _startTime;
+    private readonly Stopwatch _stopwatch = new();
     private int _activeDownloads;
     private int _completedDownloads;
     private int _failedDownloads;
 
+#pragma warning disable S1075 // Hardcoded URI in sample application
+    private const string SampleDownloadUrl = "https://download.visualstudio.microsoft.com/download/pr/89a2923a-18df-4dce-b069-51e687b04a53/9db4348b561703e622de7f03b1f11e93/dotnet-sdk-7.0.203-win-x64.exe";
+#pragma warning restore S1075
+
     // Download URLs for testing
     private readonly string[] _downloadUrls = new[]
     {
-        "https://download.visualstudio.microsoft.com/download/pr/89a2923a-18df-4dce-b069-51e687b04a53/9db4348b561703e622de7f03b1f11e93/dotnet-sdk-7.0.203-win-x64.exe",
-        "https://download.visualstudio.microsoft.com/download/pr/89a2923a-18df-4dce-b069-51e687b04a53/9db4348b561703e622de7f03b1f11e93/dotnet-sdk-7.0.203-win-x64.exe",
-        "https://download.visualstudio.microsoft.com/download/pr/89a2923a-18df-4dce-b069-51e687b04a53/9db4348b561703e622de7f03b1f11e93/dotnet-sdk-7.0.203-win-x64.exe",
-        "https://download.visualstudio.microsoft.com/download/pr/89a2923a-18df-4dce-b069-51e687b04a53/9db4348b561703e622de7f03b1f11e93/dotnet-sdk-7.0.203-win-x64.exe"
+        SampleDownloadUrl,
+        SampleDownloadUrl,
+        SampleDownloadUrl,
+        SampleDownloadUrl
     };
 
     public MainViewModel(DownloadService downloadService)
@@ -95,8 +101,12 @@ public partial class MainViewModel : ObservableObject
         // Initialize statistics
         _totalDownloads = _downloadUrls.Length;
         _activeDownloads = _downloadUrls.Length;
-        _startTime = DateTime.Now;
         UpdateStatisticsDisplay();
+
+        // Initialize destination paths for this batch
+        _destinationPaths.Clear();
+        for (int i = 0; i < _downloadUrls.Length; i++)
+            _destinationPaths.Add(Path.Combine(Path.GetTempPath(), $"download_{i}_{Guid.NewGuid()}.tmp"));
 
         // Create global cancellation token source
         _globalCancellationTokenSource = new CancellationTokenSource();
@@ -129,10 +139,6 @@ public partial class MainViewModel : ObservableObject
             await Task.WhenAll(downloadTasks);
             MessageBox.Show("All downloads completed!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
         }
-        catch (OperationCanceledException)
-        {
-            MessageBox.Show("Downloads were cancelled.", "Cancelled", MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
         catch (Exception ex)
         {
             MessageBox.Show($"Error during downloads: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -141,6 +147,11 @@ public partial class MainViewModel : ObservableObject
         {
             IsDownloading = false;
         }
+
+        if (_completedDownloads == _totalDownloads)
+            MessageBox.Show("All downloads completed!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+        else if (_failedDownloads > 0)
+            MessageBox.Show($"Downloads finished: {_completedDownloads} completed, {_failedDownloads} failed or cancelled.", "Completed", MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 
     [RelayCommand]
@@ -152,52 +163,130 @@ public partial class MainViewModel : ObservableObject
     private async Task DownloadFileAsync(int index, string url, CancellationToken cancellationToken)
     {
         var downloadVm = Downloads[index];
-        var destinationPath = Path.Combine(Path.GetTempPath(), $"download_{index}_{Guid.NewGuid()}.tmp");
+        var destinationPath = _destinationPaths[index];
+        downloadVm.DestinationPath = destinationPath;
 
         try
         {
             var progress = new Progress<TransferState>(state =>
             {
-                Application.Current.Dispatcher.Invoke(() =>
-                {
-                    downloadVm.UpdateProgress(state);
-                    UpdateStatistics(state);
-                });
+                downloadVm.UpdateProgress(state);
+                UpdateStatistics(state);
             });
 
             var latencyTracker = new LatencyTracker();
 
-            await _downloadService.DownloadFileAsync(url, destinationPath, progress, latencyTracker, cancellationToken);
+            DownloadResult result = await _downloadService.DownloadFileAsync(
+                new Uri(url), destinationPath, progress, latencyTracker, resumeToken: null, cancellationToken);
 
-            Application.Current.Dispatcher.Invoke(() =>
+            await Application.Current.Dispatcher.InvokeAsync(() =>
             {
-                downloadVm.MarkComplete();
-                MarkDownloadComplete();
+                if (result.IsSuccess)
+                {
+                    downloadVm.MarkComplete();
+                    MarkDownloadComplete();
+                    // Clean up downloaded temp file on success
+                    if (File.Exists(destinationPath))
+                        File.Delete(destinationPath);
+                }
+                else if (result.ResumeToken != null)
+                {
+                    downloadVm.MarkCancelled(result.ResumeToken);
+                    MarkDownloadFailed();
+                }
+                else
+                {
+                    downloadVm.MarkError();
+                    MarkDownloadFailed();
+                    if (File.Exists(destinationPath))
+                        File.Delete(destinationPath);
+                }
             });
-
-            // Clean up downloaded file
-            if (File.Exists(destinationPath))
-            {
-                File.Delete(destinationPath);
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                downloadVm.MarkError();
-                MarkDownloadFailed();
-            });
-            throw;
         }
         catch (Exception)
         {
-            Application.Current.Dispatcher.Invoke(() =>
+            await Application.Current.Dispatcher.InvokeAsync(() =>
             {
                 downloadVm.MarkError();
                 MarkDownloadFailed();
             });
-            throw;
+        }
+    }
+
+    /// <summary>Resumes a cancelled download for the specified <paramref name="vm"/>.</summary>
+    [RelayCommand]
+    private async Task ResumeDownloadAsync(DownloadItemViewModel vm)
+    {
+        if (vm.ResumeToken is null || vm.DestinationPath is null)
+            return;
+
+        int index = Downloads.IndexOf(vm);
+        if (index < 0)
+            return;
+
+        // If the global CTS is null or already cancelled (e.g. after "Stop All Downloads"),
+        // replace it with a fresh one so the resumed download is not immediately cancelled.
+        if (_globalCancellationTokenSource is null || _globalCancellationTokenSource.IsCancellationRequested)
+        {
+            _globalCancellationTokenSource?.Dispose();
+            _globalCancellationTokenSource = new CancellationTokenSource();
+        }
+
+        var individualCts = CancellationTokenSource.CreateLinkedTokenSource(_globalCancellationTokenSource.Token);
+
+        // Replace the old (cancelled/disposed) CTS
+        _individualCancellationTokenSources[index].Dispose();
+        _individualCancellationTokenSources[index] = individualCts;
+
+        // Capture token and path BEFORE ResetForResume() clears vm.ResumeToken
+        var resumeToken = vm.ResumeToken!;
+        var destinationPath = vm.DestinationPath!;
+
+        vm.ResetForResume();
+        vm.SetCancellationTokenSource(individualCts);
+
+        await ResumeFileAsync(vm, resumeToken, destinationPath, individualCts.Token).ConfigureAwait(false);
+    }
+
+    private async Task ResumeFileAsync(DownloadItemViewModel vm, ResumeToken resumeToken, string destinationPath, CancellationToken ct)
+    {
+        await Application.Current.Dispatcher.InvokeAsync(MarkDownloadResuming);
+        try
+        {
+            var latencyTracker = new LatencyTracker();
+            var progress = new Progress<TransferState>(state =>
+            {
+                vm.UpdateProgress(state);
+                UpdateStatistics(state);
+            });
+
+            DownloadResult result = await _downloadService.DownloadFileAsync(
+                resumeToken.Url, destinationPath, progress, latencyTracker, resumeToken, ct);
+
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                if (result.IsSuccess)
+                {
+                    vm.MarkComplete();
+                    MarkDownloadComplete();
+                    if (File.Exists(destinationPath))
+                        File.Delete(destinationPath);
+                }
+                else if (result.ResumeToken != null)
+                {
+                    vm.MarkCancelled(result.ResumeToken); // chainable cancel → resume
+                    MarkDownloadFailed();
+                }
+                else
+                {
+                    vm.MarkError();
+                    MarkDownloadFailed();
+                }
+            });
+        }
+        catch (Exception)
+        {
+            await Application.Current.Dispatcher.InvokeAsync(() => vm.MarkError());
         }
     }
 
@@ -208,7 +297,7 @@ public partial class MainViewModel : ObservableObject
         _totalSpeed = 0;
         _totalLatency = 0;
         _latencyCount = 0;
-        _startTime = DateTime.Now;
+        _stopwatch.Restart();
         _activeDownloads = 0;
         _completedDownloads = 0;
         _failedDownloads = 0;
@@ -240,6 +329,14 @@ public partial class MainViewModel : ObservableObject
     {
         _activeDownloads--;
         _failedDownloads++;
+        UpdateStatisticsDisplay();
+    }
+
+    /// <summary>Reverses the failed/active counters when a cancelled download is resumed.</summary>
+    private void MarkDownloadResuming()
+    {
+        _activeDownloads++;
+        _failedDownloads--;
         UpdateStatisticsDisplay();
     }
 
@@ -278,7 +375,7 @@ public partial class MainViewModel : ObservableObject
         }
 
         // Total elapsed
-        var elapsed = DateTime.Now - _startTime;
+        TimeSpan elapsed = _stopwatch.Elapsed;
         TotalElapsedText = $"{elapsed.TotalSeconds:N1}s";
     }
 }

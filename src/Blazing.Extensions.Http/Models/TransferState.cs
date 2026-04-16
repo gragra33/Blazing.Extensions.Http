@@ -57,6 +57,11 @@ public sealed class TransferState
     /// </summary>
     public LatencyTracker? Latency { get; set; }
 
+    /// <summary>
+    /// Gets the byte offset from which this transfer started (non-zero on a resume).
+    /// </summary>
+    public long StartOffset { get; private set; }
+
     #endregion
 
     /// <summary>
@@ -66,12 +71,32 @@ public sealed class TransferState
         => TotalBytes < 1D ? -1D : Total.Transferred / TotalBytes;
 
     /// <summary>
-    /// Marks the start of the transfer and sets the total bytes.
+    /// Marks the start of the transfer, sets the total bytes, and optionally pre-seeds
+    /// <see cref="Transfer.Transferred"/> to <paramref name="startOffset"/> so that all
+    /// progress calculations reflect the full download when resuming.
     /// </summary>
-    public void Start(long? totalBytes)
+    /// <param name="totalBytes">Total number of bytes to transfer, or <c>null</c> when unknown.</param>
+    /// <param name="startOffset">
+    /// Byte offset from which to resume; <c>0</c> for a fresh download.
+    /// When non-zero, <see cref="Transfer.Transferred"/> is pre-seeded so existing
+    /// <see cref="CalcProgressPercentage"/>, <see cref="CalcRemainingSize"/>, and
+    /// <see cref="CalcEstimatedRemainingTime"/> all reflect the full file.
+    /// </param>
+    public void Start(long? totalBytes, long startOffset = 0)
     {
+        if (startOffset < 0)
+            throw new ArgumentOutOfRangeException(nameof(startOffset), startOffset, "Start offset must be non-negative.");
+        if (totalBytes.HasValue && totalBytes.Value > 0 && startOffset > totalBytes.Value)
+            throw new ArgumentOutOfRangeException(nameof(startOffset), startOffset, "Start offset must not exceed total bytes.");
+
         StartTime = DateTimeOffset.Now;
+        LastCheckTime = StartTime;
         TotalBytes = totalBytes ?? 0D;
+        StartOffset = startOffset;
+        if (startOffset > 0)
+        {
+            Total.Transferred = startOffset;
+        }
     }
 
     /// <summary>
