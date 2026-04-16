@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Blazing.Extensions.DependencyInjection;
 using Blazing.Extensions.Http.Models;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,9 +15,18 @@ internal sealed class DownloadProgressControl : UserControl
     private Label _fileNameLabel = null!;
     private ProgressBar _progressBar = null!;
     private Button _cancelButton = null!;
+    private Button _resumeButton = null!;
     private TableLayoutPanel _statsTable = null!;
 
     private CancellationTokenSource? _cancellationTokenSource;
+    private ResumeToken? _resumeToken;
+
+    /// <summary>Gets or sets the local file path where this download is being saved.</summary>
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public string? DestinationPath { get; set; }
+
+    /// <summary>Raised when the user clicks the Resume button; the event argument is the stored <see cref="ResumeToken"/>.</summary>
+    public event EventHandler<ResumeToken>? ResumeRequested;
 
     public DownloadProgressControl()
     {
@@ -28,6 +38,7 @@ internal sealed class DownloadProgressControl : UserControl
         _mainPanel = new Panel();
         _fileNameLabel = new Label();
         _cancelButton = new Button();
+        _resumeButton = new Button();
         _progressBar = new ProgressBar();
         _statsTable = new TableLayoutPanel();
         
@@ -39,6 +50,7 @@ internal sealed class DownloadProgressControl : UserControl
         _mainPanel.BackColor = Color.White;
         _mainPanel.BorderStyle = BorderStyle.None;
         _mainPanel.Controls.Add(_fileNameLabel);
+        _mainPanel.Controls.Add(_resumeButton);
         _mainPanel.Controls.Add(_cancelButton);
         _mainPanel.Controls.Add(_progressBar);
         _mainPanel.Controls.Add(_statsTable);
@@ -78,6 +90,23 @@ internal sealed class DownloadProgressControl : UserControl
         _cancelButton.UseVisualStyleBackColor = false;
         _cancelButton.Click += CancelButton_Click;
         _cancelButton.EnabledChanged += CancelButton_EnabledChanged;
+        // 
+        // _resumeButton
+        // 
+        _resumeButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+        _resumeButton.BackColor = Color.FromArgb(255, 140, 0);
+        _resumeButton.Cursor = Cursors.Hand;
+        _resumeButton.FlatAppearance.BorderSize = 0;
+        _resumeButton.FlatStyle = FlatStyle.Flat;
+        _resumeButton.Font = new Font("Segoe UI", 9F);
+        _resumeButton.ForeColor = Color.White;
+        _resumeButton.Name = "_resumeButton";
+        _resumeButton.Size = new Size(100, 25);
+        _resumeButton.TabIndex = 2;
+        _resumeButton.Text = "Resume";
+        _resumeButton.UseVisualStyleBackColor = false;
+        _resumeButton.Visible = false;
+        _resumeButton.Click += ResumeButton_Click;
         // 
         // _progressBar
         // 
@@ -134,7 +163,7 @@ internal sealed class DownloadProgressControl : UserControl
 
     private void DownloadProgressControl_Layout(object? sender, LayoutEventArgs e)
     {
-        // Position the cancel button at the right edge, and adjust the file name label width
+        // Position the cancel button at the right edge, resume button to its left
         if (_cancelButton != null && _fileNameLabel != null)
         {
             int leftPadding = 16;
@@ -144,13 +173,18 @@ internal sealed class DownloadProgressControl : UserControl
             int fileNameHeight = 25;
             int progressBarHeight = 20;
             int cancelButtonWidth = 100;
-            int contentWidth = Width - leftPadding - rightPadding - 2; // -2 for border
+            int resumeButtonWidth = 100;
+            int buttonSpacing = 5;
+            int contentWidth = Width - leftPadding - rightPadding - 2;
 
             _cancelButton.Top = topPadding;
-            _cancelButton.Left = Width - rightPadding - cancelButtonWidth - 2; // -2 for border
+            _cancelButton.Left = Width - rightPadding - cancelButtonWidth - 2;
+            _resumeButton.Top = topPadding;
+            _resumeButton.Left = _cancelButton.Left - resumeButtonWidth - buttonSpacing;
+            _resumeButton.Size = new Size(resumeButtonWidth, 25);
             _fileNameLabel.Top = topPadding;
             _fileNameLabel.Left = leftPadding;
-            _fileNameLabel.Width = _cancelButton.Left - _fileNameLabel.Left - 10;
+            _fileNameLabel.Width = _resumeButton.Left - _fileNameLabel.Left - 10;
             _fileNameLabel.Height = fileNameHeight;
 
             // Progress bar
@@ -356,6 +390,7 @@ internal sealed class DownloadProgressControl : UserControl
         }
         _fileNameLabel.ForeColor = Color.Green;
         _cancelButton.Enabled = false;
+        _resumeButton.Visible = false;
     }
 
     public void MarkError()
@@ -367,6 +402,47 @@ internal sealed class DownloadProgressControl : UserControl
         }
         _fileNameLabel.ForeColor = Color.Red;
         _cancelButton.Enabled = false;
+        _resumeButton.Visible = false;
+    }
+
+    /// <summary>
+    /// Marks this download as cancelled and optionally shows a Resume button if a <paramref name="resumeToken"/> is provided.
+    /// </summary>
+    /// <param name="resumeToken">The resume token from the cancelled download result.</param>
+    public void MarkCancelled(ResumeToken? resumeToken)
+    {
+        if (InvokeRequired)
+        {
+            Invoke(() => MarkCancelled(resumeToken));
+            return;
+        }
+        _resumeToken = resumeToken;
+        _fileNameLabel.ForeColor = Color.FromArgb(255, 140, 0);
+        _cancelButton.Enabled = false;
+        _resumeButton.Visible = resumeToken != null;
+    }
+
+    /// <summary>Resets this control to its initial state in preparation for a resumed download.</summary>
+    public void ResetForResume()
+    {
+        if (InvokeRequired)
+        {
+            Invoke(ResetForResume);
+            return;
+        }
+        _resumeToken = null;
+        _fileNameLabel.ForeColor = SystemColors.ControlText;
+        _cancelButton.Enabled = true;
+        _resumeButton.Visible = false;
+        _progressBar.Value = 0;
+    }
+
+    private void ResumeButton_Click(object? sender, EventArgs e)
+    {
+        if (_resumeToken is null)
+            return;
+        _resumeButton.Visible = false;
+        ResumeRequested?.Invoke(this, _resumeToken);
     }
 
     /// <summary>
@@ -382,6 +458,7 @@ internal sealed class DownloadProgressControl : UserControl
             _fileNameLabel?.Dispose();
             _progressBar?.Dispose();
             _cancelButton?.Dispose();
+            _resumeButton?.Dispose();
             _statsTable?.Dispose();
         }
         base.Dispose(disposing);

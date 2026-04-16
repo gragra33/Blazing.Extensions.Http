@@ -30,6 +30,7 @@ internal sealed class MainForm : Form
     private readonly List<(DownloadProgressControl Control, CancellationTokenSource Cts)> _downloadControls = new();
     private List<Task> _downloadTasks = new(); // Track running download tasks
     private bool _isClosing; // Prevent reentrancy
+    private readonly List<string> _destinationPaths = [];
 
     // Download URLs for testing
     private readonly string[] _downloadUrls =
@@ -316,9 +317,12 @@ internal sealed class MainForm : Form
         UpdateStatisticsPanel(_totalDownloads, _activeDownloads, _completedDownloads, _failedDownloads, _totalBytes, _totalSpeed, 0, 0);
 
         _globalCancellationTokenSource = new CancellationTokenSource();
+        _destinationPaths.Clear();
         int controlWidth = GetAdjustedControlWidth();
         for (int i = 0; i < _downloadUrls.Length; i++)
         {
+            string destinationPath = Path.Combine(Path.GetTempPath(), $"download_{i}_{Guid.NewGuid()}.tmp");
+            _destinationPaths.Add(destinationPath);
             var individualCts = CancellationTokenSource.CreateLinkedTokenSource(_globalCancellationTokenSource.Token);
             var downloadControl = new DownloadProgressControl
             {
@@ -329,6 +333,8 @@ internal sealed class MainForm : Form
             };
             downloadControl.SetFileName($"Download #{i + 1}: File{i + 1}.exe");
             downloadControl.SetCancellationTokenSource(individualCts);
+            downloadControl.DestinationPath = destinationPath;
+            downloadControl.ResumeRequested += OnResumeRequested;
             _downloadControls.Add((downloadControl, individualCts));
             _downloadsPanel.Controls.Add(downloadControl);
         }
@@ -344,10 +350,6 @@ internal sealed class MainForm : Form
         {
             await Task.WhenAll(downloadTasks).ConfigureAwait(false);
             MessageBox.Show(@"All downloads completed!", @"Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-        }
-        catch (OperationCanceledException)
-        {
-            MessageBox.Show(@"Downloads were cancelled.", @"Cancelled", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
         catch (HttpRequestException ex)
         {
@@ -378,7 +380,7 @@ internal sealed class MainForm : Form
     private async Task DownloadFileAsync(int index, string url, CancellationToken cancellationToken)
     {
         var (control, _) = _downloadControls[index];
-        var destinationPath = Path.Combine(Path.GetTempPath(), $"download_{index}_{Guid.NewGuid()}.tmp");
+        var destinationPath = _destinationPaths[index];
         try
         {
             var progress = new Progress<TransferState>(state =>
@@ -397,35 +399,144 @@ internal sealed class MainForm : Form
                 UpdateStatisticsPanel(_totalDownloads, _activeDownloads, _completedDownloads, _failedDownloads, _totalBytes, _totalSpeed, avgLatency, elapsed);
             });
             var latencyTracker = new LatencyTracker();
-            await _downloadService.DownloadFileAsync(url, destinationPath, progress, latencyTracker, cancellationToken).ConfigureAwait(false);
-            control.MarkComplete();
-            _activeDownloads--;
-            _completedDownloads++;
+
+            DownloadResult result = await _downloadService.DownloadFileAsync(
+                url, destinationPath, progress, latencyTracker, resumeToken: null, cancellationToken).ConfigureAwait(false);
+
+            if (result.IsSuccess)
+            {
+                control.MarkComplete();
+                _activeDownloads--;
+                _completedDownloads++;
+                if (File.Exists(destinationPath))
+                    File.Delete(destinationPath);
+            }
+            else if (result.ResumeToken != null)
+            {
+                control.MarkCancelled(result.ResumeToken);
+                _activeDownloads--;
+                _failedDownloads++;
+            }
+            else
+            {
+                control.MarkError();
+                _activeDownloads--;
+                _failedDownloads++;
+                if (File.Exists(destinationPath))
+                    File.Delete(destinationPath);
+            }
         }
-        catch (OperationCanceledException)
+        catch (IOException)
         {
             control.MarkError();
             _activeDownloads--;
             _failedDownloads++;
-            throw;
         }
-        catch (Exception)
+        catch (UnauthorizedAccessException)
         {
             control.MarkError();
             _activeDownloads--;
             _failedDownloads++;
-            throw;
         }
         finally
         {
             double avgLatency = _latencyCount > 0 ? _totalLatency / _latencyCount : 0;
             double elapsed = (DateTime.Now - _startTime).TotalSeconds;
             UpdateStatisticsPanel(_totalDownloads, _activeDownloads, _completedDownloads, _failedDownloads, _totalBytes, _totalSpeed, avgLatency, elapsed);
-            // Clean up downloaded file
-            if (File.Exists(destinationPath))
+        }
+    }
+
+    private void OnResumeRequested(object? sender, ResumeToken token)
+    {
+        if (sender is not DownloadProgressControl control)
+            return;
+
+        // If the global CTS is null or already cancelled (e.g. after "Stop All"),
+        // replace it with a fresh one so the resumed download is not immediately cancelled.
+        if (_globalCancellationTokenSource is null || _globalCancellationTokenSource.IsCancellationRequested)
+        {
+            _globalCancellationTokenSource?.Dispose();
+            _globalCancellationTokenSource = new CancellationTokenSource();
+        }
+
+        // Find the index of this control
+        int index = -1;
+        for (int i = 0; i < _downloadControls.Count; i++)
+        {
+            if (_downloadControls[i].Control == control)
             {
-                File.Delete(destinationPath);
+                index = i;
+                break;
             }
+        }
+        if (index < 0) return;
+
+        // Create a new linked CTS for this resumed download
+        var newCts = CancellationTokenSource.CreateLinkedTokenSource(_globalCancellationTokenSource.Token);
+        _downloadControls[index].Cts.Dispose();
+        _downloadControls[index] = (control, newCts);
+        control.ResetForResume();
+        control.SetCancellationTokenSource(newCts);
+
+        _ = Task.Run(() => DownloadResumeAsync(index, control, token, newCts.Token));
+    }
+
+    private async Task DownloadResumeAsync(int index, DownloadProgressControl control, ResumeToken token, CancellationToken cancellationToken)
+    {
+        // Reverse the failed/active counters recorded when the download was cancelled
+        _activeDownloads++;
+        _failedDownloads--;
+        double avgLatency = _latencyCount > 0 ? _totalLatency / _latencyCount : 0;
+        double elapsed = (DateTime.Now - _startTime).TotalSeconds;
+        UpdateStatisticsPanel(_totalDownloads, _activeDownloads, _completedDownloads, _failedDownloads, _totalBytes, _totalSpeed, avgLatency, elapsed);
+
+        string destinationPath = control.DestinationPath ?? _destinationPaths[index];
+        try
+        {
+            var progress = new Progress<TransferState>(state => control.UpdateProgress(state));
+            var latencyTracker = new LatencyTracker();
+
+            DownloadResult result = await _downloadService.DownloadFileAsync(
+                token.Url, destinationPath, progress, latencyTracker, token, cancellationToken).ConfigureAwait(false);
+
+            if (result.IsSuccess)
+            {
+                control.MarkComplete();
+                _activeDownloads--;
+                _completedDownloads++;
+                if (File.Exists(destinationPath))
+                    File.Delete(destinationPath);
+            }
+            else if (result.ResumeToken != null)
+            {
+                control.MarkCancelled(result.ResumeToken); // chainable resume
+                _activeDownloads--;
+                _failedDownloads++;
+            }
+            else
+            {
+                control.MarkError();
+                _activeDownloads--;
+                _failedDownloads++;
+            }
+        }
+        catch (IOException)
+        {
+            control.MarkError();
+            _activeDownloads--;
+            _failedDownloads++;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            control.MarkError();
+            _activeDownloads--;
+            _failedDownloads++;
+        }
+        finally
+        {
+            double avgLatencyFinal = _latencyCount > 0 ? _totalLatency / _latencyCount : 0;
+            double elapsedFinal = (DateTime.Now - _startTime).TotalSeconds;
+            UpdateStatisticsPanel(_totalDownloads, _activeDownloads, _completedDownloads, _failedDownloads, _totalBytes, _totalSpeed, avgLatencyFinal, elapsedFinal);
         }
     }
 

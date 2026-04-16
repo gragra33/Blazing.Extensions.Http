@@ -1,4 +1,4 @@
-namespace Blazing.Extensions.Http.Tests.Models;
+namespace Blazing.Extensions.Http.Tests.UnitTests.Models;
 
 public class LatencyTrackerTests
 {
@@ -35,10 +35,10 @@ public class LatencyTrackerTests
     {
         // Arrange
         var tracker = new LatencyTracker();
-        
+
         // Act - First packet for TTFB
         tracker.UpdatePacketLatency(50_000_000); // 50ms
-        
+
         // Subsequent packets for streaming stats
         tracker.UpdatePacketLatency(10_000_000); // 10ms
         tracker.UpdatePacketLatency(20_000_000); // 20ms
@@ -56,7 +56,7 @@ public class LatencyTrackerTests
     {
         // Arrange
         var tracker = new LatencyTracker();
-        
+
         // Act - Values below 10 nanoseconds should be ignored
         tracker.UpdatePacketLatency(5);
         tracker.UpdatePacketLatency(8);

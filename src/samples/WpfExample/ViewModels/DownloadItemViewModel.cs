@@ -51,7 +51,19 @@ public partial class DownloadItemViewModel : ObservableObject
     private bool _isError;
 
     [ObservableProperty]
+    private bool _isCancelled;
+
+    [ObservableProperty]
+    private bool _canResume;
+
+    [ObservableProperty]
     private bool _canCancel = true;
+
+    /// <summary>Gets the resume token captured on cancellation, or <c>null</c> if not cancelled.</summary>
+    public ResumeToken? ResumeToken { get; internal set; }
+
+    /// <summary>Gets or sets the local file path where this download is being saved.</summary>
+    public string? DestinationPath { get; set; }
 
     public void SetCancellationTokenSource(CancellationTokenSource? cts)
     {
@@ -134,6 +146,8 @@ public partial class DownloadItemViewModel : ObservableObject
     {
         IsComplete = true;
         IsError = false;
+        IsCancelled = false;
+        CanResume = false;
         CanCancel = false;
     }
 
@@ -141,6 +155,33 @@ public partial class DownloadItemViewModel : ObservableObject
     {
         IsComplete = false;
         IsError = true;
+        IsCancelled = false;
+        CanResume = false;
         CanCancel = false;
+    }
+
+    /// <summary>
+    /// Marks this download as cancelled and stores the <paramref name="resumeToken"/> for a subsequent resume.
+    /// Sets <see cref="CanResume"/> when a token is available.
+    /// </summary>
+    /// <param name="resumeToken">The resume token from the cancelled <see cref="DownloadResult"/>.</param>
+    public void MarkCancelled(ResumeToken? resumeToken)
+    {
+        IsCancelled = true;
+        IsError = false;
+        IsComplete = false;
+        CanCancel = false;
+        ResumeToken = resumeToken;
+        CanResume = resumeToken != null;
+    }
+
+    /// <summary>Resets this ViewModel to its initial state in preparation for a resumed download.</summary>
+    public void ResetForResume()
+    {
+        IsCancelled = false;
+        CanResume = false;
+        ResumeToken = null;
+        ProgressPercentage = 0;
+        ProgressText = "0%";
     }
 }

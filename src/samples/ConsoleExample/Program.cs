@@ -4,6 +4,7 @@
 
 namespace ConsoleExample;
 
+using Blazing.Extensions.Http.Models;
 using Microsoft.Extensions.DependencyInjection;
 
 /// <summary>
@@ -44,13 +45,59 @@ internal static class Program
 
         bool success = true;
         int reportInterval = 250;
+        string[] saveFiles = [saveFile1, saveFile2, saveFile3, saveFile4];
 
         try
         {
             if (choice == '1')
             {
-                // Download multiple files in parallel
-                await FileTransferHelper.RunDownloadAsync(httpClientFactory, new Uri(url), [saveFile1, saveFile2, saveFile3, saveFile4], reportInterval).ConfigureAwait(false);
+                // Download multiple files in parallel with Ctrl+C support
+                DownloadResult[] results = await RunWithConsoleCancellationAsync(
+                    cancellationToken => FileTransferHelper.RunDownloadAsync(
+                        httpClientFactory, new Uri(url), saveFiles, reportInterval, cancellationToken)).ConfigureAwait(false);
+
+                // Per-file status summary
+                Console.SetCursorPosition(0, 8 + saveFiles.Length + 1);
+                for (int i = 0; i < results.Length; i++)
+                {
+                    DownloadResult r = results[i];
+                    if (r.IsSuccess)
+                        Console.WriteLine($"  File {i + 1}: Complete");
+                    else if (r.ResumeToken != null)
+                        Console.WriteLine($"  File {i + 1}: Cancelled (resumable at {r.ResumeToken.BytesWritten:N0} bytes)");
+                    else
+                        Console.WriteLine($"  File {i + 1}: Failed - {r.ErrorMessage}");
+                }
+
+                // Resume loop
+                while (results.Any(r => !r.IsSuccess && r.ResumeToken != null))
+                {
+#pragma warning disable CA1303
+                    Console.Write("\nSome downloads were cancelled. Resume? (y/n): ");
+#pragma warning restore CA1303
+                    char answer = Console.ReadKey().KeyChar;
+                    Console.WriteLine();
+                    if (answer != 'y' && answer != 'Y') break;
+
+                    results = await RunWithConsoleCancellationAsync(
+                        cancellationToken => FileTransferHelper.ResumeDownloadsAsync(
+                            httpClientFactory, results, saveFiles, reportInterval, cancellationToken)).ConfigureAwait(false);
+
+                    // Updated summary
+                    Console.SetCursorPosition(0, 8 + saveFiles.Length + 1);
+                    for (int i = 0; i < results.Length; i++)
+                    {
+                        DownloadResult r = results[i];
+                        if (r.IsSuccess)
+                            Console.WriteLine($"  File {i + 1}: Complete     ");
+                        else if (r.ResumeToken != null)
+                            Console.WriteLine($"  File {i + 1}: Cancelled (resumable at {r.ResumeToken.BytesWritten:N0} bytes)");
+                        else
+                            Console.WriteLine($"  File {i + 1}: Failed - {r.ErrorMessage}");
+                    }
+                }
+
+                success = results.All(r => r.IsSuccess);
             }
             else if (choice == '2')
             {
@@ -109,5 +156,33 @@ internal static class Program
         builder.AddHttpClient();
         ServiceProvider serviceProvider = builder.BuildServiceProvider();
         return serviceProvider.GetRequiredService<IHttpClientFactory>();
+    }
+
+    /// <summary>
+    /// Runs a console operation with Ctrl+C mapped to a scoped <see cref="CancellationToken"/>.
+    /// </summary>
+    /// <typeparam name="T">The operation result type.</typeparam>
+    /// <param name="operation">The operation to execute.</param>
+    /// <returns>The operation result.</returns>
+    private static async Task<T> RunWithConsoleCancellationAsync<T>(Func<CancellationToken, Task<T>> operation)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+
+        using CancellationTokenSource cts = new();
+        ConsoleCancelEventHandler cancelHandler = (_, e) =>
+        {
+            e.Cancel = true;
+            cts.Cancel();
+        };
+
+        Console.CancelKeyPress += cancelHandler;
+        try
+        {
+            return await operation(cts.Token).ConfigureAwait(false);
+        }
+        finally
+        {
+            Console.CancelKeyPress -= cancelHandler;
+        }
     }
 }

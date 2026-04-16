@@ -119,4 +119,40 @@ internal sealed class Progress
         Console.WriteLine(sb);
         InternalLock.Release();
     }
+
+    /// <summary>Writes a "Cancelled" status at the given console row.</summary>
+    /// <param name="row">The console row (top position) to write to.</param>
+    public static void MarkCancelled(int row)
+    {
+        InternalLock.Wait();
+        try
+        {
+            Console.SetCursorPosition(0, row);
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.Write("Cancelled" + new string(' ', 60));
+            Console.ResetColor();
+        }
+        finally
+        {
+            InternalLock.Release();
+        }
+    }
+
+    /// <summary>Writes a "Resuming..." status at the given console row.</summary>
+    /// <param name="row">The console row (top position) to write to.</param>
+    public static void MarkResuming(int row)
+    {
+        InternalLock.Wait();
+        try
+        {
+            Console.SetCursorPosition(0, row);
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.Write("Resuming..." + new string(' ', 60));
+            Console.ResetColor();
+        }
+        finally
+        {
+            InternalLock.Release();
+        }
+    }
 }

@@ -20,7 +20,8 @@ public static class HttpClientExtension
     /// <param name="bufferSize">Buffer size for reading the stream.</param>
     /// <param name="latencyTracker">Optional latency tracker for TimeToFirstByte measurement.</param>
     /// <param name="cancellationToken">Cancellation token to cancel the operation.</param>
-    public static async Task GetAsync(
+    /// <returns>A <see cref="GetResult"/> indicating success or failure; never throws on HTTP errors or cancellation.</returns>
+    public static async Task<GetResult> GetAsync(
         this HttpClient client,
         Uri url,
         Stream destStream,
@@ -30,7 +31,7 @@ public static class HttpClientExtension
         LatencyTracker? latencyTracker = null,
         CancellationToken cancellationToken = default)
     {
-        await GetAsync(client, url, destStream, progress, interval, bufferSize, latencyTracker, null, cancellationToken).ConfigureAwait(false);
+        return await GetAsync(client, url, destStream, progress, interval, bufferSize, latencyTracker, null, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -44,7 +45,8 @@ public static class HttpClientExtension
     /// <param name="bufferSize">Buffer size for reading the stream.</param>
     /// <param name="latencyTracker">Optional latency tracker for TimeToFirstByte measurement.</param>
     /// <param name="cancellationToken">Cancellation token to cancel the operation.</param>
-    public static async Task GetAsync(
+    /// <returns>A <see cref="GetResult"/> indicating success or failure; never throws on HTTP errors or cancellation.</returns>
+    public static async Task<GetResult> GetAsync(
         this HttpClient client,
         string Url,
         Stream destStream,
@@ -54,7 +56,7 @@ public static class HttpClientExtension
         LatencyTracker? latencyTracker = null,
         CancellationToken cancellationToken = default)
     {
-        await GetAsync(client, new Uri(Url), destStream, progress, interval, bufferSize, latencyTracker, cancellationToken).ConfigureAwait(false);
+        return await GetAsync(client, new Uri(Url), destStream, progress, interval, bufferSize, latencyTracker, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -69,7 +71,8 @@ public static class HttpClientExtension
     /// <param name="latencyTracker">Optional latency tracker for TimeToFirstByte measurement.</param>
     /// <param name="headers">Optional headers to add to the request.</param>
     /// <param name="cancellationToken">Cancellation token to cancel the operation.</param>
-    public static async Task GetAsync(
+    /// <returns>A <see cref="GetResult"/> indicating success or failure; never throws on HTTP errors or cancellation.</returns>
+    public static async Task<GetResult> GetAsync(
         this HttpClient client,
         Uri url,
         Stream destStream,
@@ -93,7 +96,7 @@ public static class HttpClientExtension
                 client.DefaultRequestHeaders.Add(kvp.Key, kvp.Value);
             }
         }
-        await InternalGetAsync(client, url, destStream, progress, interval, bufferSize, latencyTracker, cancellationToken).ConfigureAwait(false);
+        return await InternalGetAsync(client, url, destStream, progress, interval, bufferSize, latencyTracker, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -108,7 +111,8 @@ public static class HttpClientExtension
     /// <param name="latencyTracker">Optional latency tracker for TimeToFirstByte measurement.</param>
     /// <param name="headers">Optional headers to add to the request.</param>
     /// <param name="cancellationToken">Cancellation token to cancel the operation.</param>
-    public static async Task GetAsync(
+    /// <returns>A <see cref="GetResult"/> indicating success or failure; never throws on HTTP errors or cancellation.</returns>
+    public static async Task<GetResult> GetAsync(
         this HttpClient client,
         string Url,
         Stream destStream,
@@ -119,13 +123,14 @@ public static class HttpClientExtension
         IDictionary<string, string>? headers,
         CancellationToken cancellationToken = default)
     {
-        await GetAsync(client, new Uri(Url), destStream, progress, interval, bufferSize, latencyTracker, headers, cancellationToken).ConfigureAwait(false);
+        return await GetAsync(client, new Uri(Url), destStream, progress, interval, bufferSize, latencyTracker, headers, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
     /// Core logic for downloading a file, reporting progress, and tracking latency.
+    /// Returns a <see cref="GetResult"/>; never throws on HTTP errors or cancellation.
     /// </summary>
-    private static async Task InternalGetAsync(
+    private static async Task<GetResult> InternalGetAsync(
         HttpClient client,
         Uri url,
         Stream destStream,
@@ -141,7 +146,6 @@ public static class HttpClientExtension
             // Capture timestamp before request for accurate TimeToFirstByte
             long requestStartTicks = Stopwatch.GetTimestamp();
             response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-            Stream httpStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -160,8 +164,10 @@ public static class HttpClientExtension
                     // Ignore errors when reading error content during HTTP errors
                 }
 
-                throw new HttpRequestException($"{response.ReasonPhrase}: {errorContent}", null, response.StatusCode);
+                return GetResult.Failed(response.StatusCode, $"{response.ReasonPhrase}: {errorContent}");
             }
+
+            Stream httpStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
 
             // Websites report either, not both for content length
             long? length = response.Content.Headers.ContentLength;
@@ -209,13 +215,268 @@ public static class HttpClientExtension
             // Mark transfer as complete
             transferState.Stop();
             progress.Report(transferState.Update(position));
+            return GetResult.Ok(response.StatusCode);
         }
-        catch (Exception)
+        catch (OperationCanceledException ex)
+        {
+            return GetResult.Failed(null, "Cancelled", ex);
+        }
+#pragma warning disable CA1031
+        catch (Exception ex)
+#pragma warning restore CA1031
         {
             response?.Dispose();
-            throw;
+            return GetResult.Failed(null, ex.Message, ex);
         }
     }
+
+    /// <summary>
+    /// Core logic for a resumable file download using HTTP Range Requests.
+    /// Returns a <see cref="DownloadResult"/>; never throws on HTTP errors or cancellation.
+    /// On cancellation, the result carries a <see cref="ResumeToken"/> for subsequent resume.
+    /// </summary>
+    private static async Task<DownloadResult> InternalDownloadAsync(
+        HttpClient client,
+        Uri url,
+        Stream destStream,
+        IProgress<TransferState> progress,
+        int interval,
+        int bufferSize,
+        LatencyTracker? latencyTracker,
+        ResumeToken? resumeToken,
+        CancellationToken cancellationToken,
+        IDictionary<string, string>? headers = null)
+    {
+        HttpResponseMessage? response = null;
+        string? etag = null;
+        DateTimeOffset? lastModified = null;
+        long bytesWritten = resumeToken?.BytesWritten ?? 0L;
+
+        try
+        {
+            long requestStartTicks = Stopwatch.GetTimestamp();
+            using HttpRequestMessage request = new(HttpMethod.Get, url);
+
+            // Apply optional custom headers
+            if (headers != null)
+            {
+                foreach (KeyValuePair<string, string> kvp in headers)
+                    request.Headers.TryAddWithoutValidation(kvp.Key, kvp.Value);
+            }
+
+            // Apply Range and If-Range headers for resume
+            if (resumeToken != null)
+            {
+                request.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(resumeToken.BytesWritten, null);
+                string? ifRange = resumeToken.ETag ?? resumeToken.LastModified?.ToString("R");
+                if (ifRange != null)
+                    request.Headers.TryAddWithoutValidation("If-Range", ifRange);
+            }
+
+            response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+
+            // Capture validators for future resume tokens
+            etag = response.Headers.ETag?.Tag;
+            lastModified = response.Content.Headers.LastModified;
+
+            // If we requested a range but got 200 OK, the server doesn't support Range requests
+            if (resumeToken != null && response.StatusCode == HttpStatusCode.OK)
+                return DownloadResult.Failed(response.StatusCode, "Server does not support Range requests");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                string errorContent = string.Empty;
+                try { errorContent = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false); }
+                catch (OperationCanceledException)
+                {
+                    // Ignore errors when reading error content during cancellation
+                }
+                catch (HttpRequestException)
+                {
+                    // Ignore errors when reading error content during HTTP errors
+                }
+                return DownloadResult.Failed(response.StatusCode, $"{response.ReasonPhrase}: {errorContent}");
+            }
+
+            long? length = response.Content.Headers.ContentLength;
+            long? totalBytes = response.Content.Headers.ContentRange?.Length ?? length;
+
+            long startOffset = resumeToken?.BytesWritten ?? 0L;
+
+            Stream httpStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+
+            int position = 0;
+            int bytesRead;
+            byte[] buffer = new byte[bufferSize];
+
+            TransferState transferState = new();
+            transferState.Start(totalBytes, startOffset);
+
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            long lastReport = 0;
+            long lastPacketTicks = requestStartTicks;
+            double tickFrequency = 1_000_000_000.0 / Stopwatch.Frequency;
+
+            while ((bytesRead = await httpStream.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken).ConfigureAwait(false)) > 0)
+            {
+                long nowTicks = Stopwatch.GetTimestamp();
+                if (latencyTracker != null)
+                {
+                    double packetNs = (nowTicks - lastPacketTicks) * tickFrequency;
+                    latencyTracker.UpdatePacketLatency(packetNs);
+                    transferState.Latency = latencyTracker;
+                }
+                lastPacketTicks = nowTicks;
+
+                await destStream.WriteAsync(buffer.AsMemory(0, bytesRead), cancellationToken).ConfigureAwait(false);
+                position += bytesRead;
+                bytesWritten += bytesRead; // absolute; never reset
+
+                long now = stopwatch.ElapsedMilliseconds;
+                if (now - lastReport >= interval)
+                {
+                    lastReport = now;
+                    progress.Report(transferState.Update(position));
+                    position = 0;
+                }
+            }
+
+            transferState.Stop();
+            progress.Report(transferState.Update(position));
+            return DownloadResult.Ok(response.StatusCode);
+        }
+        catch (OperationCanceledException ex)
+        {
+            // Return a resume token — StatusCode is null (no HTTP response involved in cancellation)
+            return DownloadResult.Cancelled(new ResumeToken(url, bytesWritten, etag, lastModified), ex);
+        }
+#pragma warning disable CA1031
+        catch (Exception ex)
+#pragma warning restore CA1031
+        {
+            response?.Dispose();
+            return DownloadResult.Failed(null, ex.Message, ex);
+        }
+    }
+
+    /// <summary>
+    /// Downloads a file from the specified URL with resumable cancellation support.
+    /// Returns a <see cref="DownloadResult"/> instead of throwing on cancellation or HTTP errors.
+    /// On cancellation, the result carries a <see cref="ResumeToken"/>; pass it back on the next call to resume.
+    /// </summary>
+    /// <param name="client">The HttpClient instance to use.</param>
+    /// <param name="url">The URL to download from.</param>
+    /// <param name="destStream">The destination stream to write the downloaded data to.</param>
+    /// <param name="progress">Progress reporter for transfer state.</param>
+    /// <param name="resumeToken">Optional token from a previous cancellation; when provided, a Range request is sent to continue from the saved offset.</param>
+    /// <param name="interval">Progress report interval in milliseconds.</param>
+    /// <param name="bufferSize">Buffer size for reading the stream.</param>
+    /// <param name="latencyTracker">Optional latency tracker for TimeToFirstByte measurement.</param>
+    /// <param name="cancellationToken">Cancellation token to cancel the operation.</param>
+    /// <returns>A <see cref="DownloadResult"/> indicating success, failure, or cancellation with a resume token.</returns>
+    public static async Task<DownloadResult> DownloadAsync(
+        this HttpClient client,
+        Uri url,
+        Stream destStream,
+        IProgress<TransferState> progress,
+        ResumeToken? resumeToken = null,
+        int interval = 100,
+        int bufferSize = 512,
+        LatencyTracker? latencyTracker = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(client);
+        ArgumentNullException.ThrowIfNull(destStream);
+        ArgumentNullException.ThrowIfNull(progress);
+        return await InternalDownloadAsync(client, url, destStream, progress, interval, bufferSize, latencyTracker, resumeToken, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Downloads a file from the specified URL with resumable cancellation support.
+    /// Returns a <see cref="DownloadResult"/> instead of throwing on cancellation or HTTP errors.
+    /// </summary>
+    /// <param name="client">The HttpClient instance to use.</param>
+    /// <param name="url">The URL to download from.</param>
+    /// <param name="destStream">The destination stream to write the downloaded data to.</param>
+    /// <param name="progress">Progress reporter for transfer state.</param>
+    /// <param name="resumeToken">Optional token from a previous cancellation; when provided, a Range request is sent to continue from the saved offset.</param>
+    /// <param name="interval">Progress report interval in milliseconds.</param>
+    /// <param name="bufferSize">Buffer size for reading the stream.</param>
+    /// <param name="latencyTracker">Optional latency tracker for TimeToFirstByte measurement.</param>
+    /// <param name="cancellationToken">Cancellation token to cancel the operation.</param>
+    /// <returns>A <see cref="DownloadResult"/> indicating success, failure, or cancellation with a resume token.</returns>
+    public static async Task<DownloadResult> DownloadAsync(
+        this HttpClient client,
+        string url,
+        Stream destStream,
+        IProgress<TransferState> progress,
+        ResumeToken? resumeToken = null,
+        int interval = 100,
+        int bufferSize = 512,
+        LatencyTracker? latencyTracker = null,
+        CancellationToken cancellationToken = default)
+        => await DownloadAsync(client, new Uri(url), destStream, progress, resumeToken, interval, bufferSize, latencyTracker, cancellationToken).ConfigureAwait(false);
+
+    /// <summary>
+    /// Downloads a file from the specified URL with resumable cancellation support and custom request headers.
+    /// Returns a <see cref="DownloadResult"/> instead of throwing on cancellation or HTTP errors.
+    /// </summary>
+    /// <param name="client">The HttpClient instance to use.</param>
+    /// <param name="url">The URL to download from.</param>
+    /// <param name="destStream">The destination stream to write the downloaded data to.</param>
+    /// <param name="progress">Progress reporter for transfer state.</param>
+    /// <param name="resumeToken">Optional token from a previous cancellation; when provided, a Range request is sent to continue from the saved offset.</param>
+    /// <param name="interval">Progress report interval in milliseconds.</param>
+    /// <param name="bufferSize">Buffer size for reading the stream.</param>
+    /// <param name="latencyTracker">Optional latency tracker for TimeToFirstByte measurement.</param>
+    /// <param name="headers">Optional per-request headers; applied without mutating <see cref="HttpClient.DefaultRequestHeaders"/>.</param>
+    /// <param name="cancellationToken">Cancellation token to cancel the operation.</param>
+    /// <returns>A <see cref="DownloadResult"/> indicating success, failure, or cancellation with a resume token.</returns>
+    public static async Task<DownloadResult> DownloadAsync(
+        this HttpClient client,
+        Uri url,
+        Stream destStream,
+        IProgress<TransferState> progress,
+        ResumeToken? resumeToken,
+        int interval,
+        int bufferSize,
+        LatencyTracker? latencyTracker,
+        IDictionary<string, string>? headers,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(client);
+        ArgumentNullException.ThrowIfNull(destStream);
+        ArgumentNullException.ThrowIfNull(progress);
+        return await InternalDownloadAsync(client, url, destStream, progress, interval, bufferSize, latencyTracker, resumeToken, cancellationToken, headers).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Downloads a file from the specified URL with resumable cancellation support and custom request headers.
+    /// Returns a <see cref="DownloadResult"/> instead of throwing on cancellation or HTTP errors.
+    /// </summary>
+    /// <param name="client">The HttpClient instance to use.</param>
+    /// <param name="url">The URL to download from.</param>
+    /// <param name="destStream">The destination stream to write the downloaded data to.</param>
+    /// <param name="progress">Progress reporter for transfer state.</param>
+    /// <param name="resumeToken">Optional token from a previous cancellation; when provided, a Range request is sent to continue from the saved offset.</param>
+    /// <param name="interval">Progress report interval in milliseconds.</param>
+    /// <param name="bufferSize">Buffer size for reading the stream.</param>
+    /// <param name="latencyTracker">Optional latency tracker for TimeToFirstByte measurement.</param>
+    /// <param name="headers">Optional per-request headers; applied without mutating <see cref="HttpClient.DefaultRequestHeaders"/>.</param>
+    /// <param name="cancellationToken">Cancellation token to cancel the operation.</param>
+    /// <returns>A <see cref="DownloadResult"/> indicating success, failure, or cancellation with a resume token.</returns>
+    public static async Task<DownloadResult> DownloadAsync(
+        this HttpClient client,
+        string url,
+        Stream destStream,
+        IProgress<TransferState> progress,
+        ResumeToken? resumeToken,
+        int interval,
+        int bufferSize,
+        LatencyTracker? latencyTracker,
+        IDictionary<string, string>? headers,
+        CancellationToken cancellationToken = default)
+        => await DownloadAsync(client, new Uri(url), destStream, progress, resumeToken, interval, bufferSize, latencyTracker, headers, cancellationToken).ConfigureAwait(false);
 
     /// <summary>
     /// Uploads a file to the specified URL using multipart/form-data, reporting progress and tracking latency.

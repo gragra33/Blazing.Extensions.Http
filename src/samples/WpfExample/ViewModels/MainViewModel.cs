@@ -19,6 +19,7 @@ public partial class MainViewModel : ObservableObject
     private readonly DownloadService _downloadService;
     private CancellationTokenSource? _globalCancellationTokenSource;
     private List<CancellationTokenSource> _individualCancellationTokenSources = new();
+    private readonly List<string> _destinationPaths = [];
 
     [ObservableProperty]
     private bool _isDownloading;
@@ -98,6 +99,11 @@ public partial class MainViewModel : ObservableObject
         _startTime = DateTime.Now;
         UpdateStatisticsDisplay();
 
+        // Initialize destination paths for this batch
+        _destinationPaths.Clear();
+        for (int i = 0; i < _downloadUrls.Length; i++)
+            _destinationPaths.Add(Path.Combine(Path.GetTempPath(), $"download_{i}_{Guid.NewGuid()}.tmp"));
+
         // Create global cancellation token source
         _globalCancellationTokenSource = new CancellationTokenSource();
 
@@ -152,7 +158,8 @@ public partial class MainViewModel : ObservableObject
     private async Task DownloadFileAsync(int index, string url, CancellationToken cancellationToken)
     {
         var downloadVm = Downloads[index];
-        var destinationPath = Path.Combine(Path.GetTempPath(), $"download_{index}_{Guid.NewGuid()}.tmp");
+        var destinationPath = _destinationPaths[index];
+        downloadVm.DestinationPath = destinationPath;
 
         try
         {
@@ -167,28 +174,32 @@ public partial class MainViewModel : ObservableObject
 
             var latencyTracker = new LatencyTracker();
 
-            await _downloadService.DownloadFileAsync(url, destinationPath, progress, latencyTracker, cancellationToken);
+            DownloadResult result = await _downloadService.DownloadFileAsync(
+                new Uri(url), destinationPath, progress, latencyTracker, resumeToken: null, cancellationToken);
 
             Application.Current.Dispatcher.Invoke(() =>
             {
-                downloadVm.MarkComplete();
-                MarkDownloadComplete();
+                if (result.IsSuccess)
+                {
+                    downloadVm.MarkComplete();
+                    MarkDownloadComplete();
+                    // Clean up downloaded temp file on success
+                    if (File.Exists(destinationPath))
+                        File.Delete(destinationPath);
+                }
+                else if (result.ResumeToken != null)
+                {
+                    downloadVm.MarkCancelled(result.ResumeToken);
+                    MarkDownloadFailed();
+                }
+                else
+                {
+                    downloadVm.MarkError();
+                    MarkDownloadFailed();
+                    if (File.Exists(destinationPath))
+                        File.Delete(destinationPath);
+                }
             });
-
-            // Clean up downloaded file
-            if (File.Exists(destinationPath))
-            {
-                File.Delete(destinationPath);
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            Application.Current.Dispatcher.Invoke(() =>
-            {
-                downloadVm.MarkError();
-                MarkDownloadFailed();
-            });
-            throw;
         }
         catch (Exception)
         {
@@ -197,7 +208,84 @@ public partial class MainViewModel : ObservableObject
                 downloadVm.MarkError();
                 MarkDownloadFailed();
             });
-            throw;
+        }
+    }
+
+    /// <summary>Resumes a cancelled download for the specified <paramref name="vm"/>.</summary>
+    [RelayCommand]
+    private async Task ResumeDownloadAsync(DownloadItemViewModel vm)
+    {
+        if (vm.ResumeToken is null || vm.DestinationPath is null)
+            return;
+
+        int index = Downloads.IndexOf(vm);
+        if (index < 0)
+            return;
+
+        // If the global CTS is null or already cancelled (e.g. after "Stop All Downloads"),
+        // replace it with a fresh one so the resumed download is not immediately cancelled.
+        if (_globalCancellationTokenSource is null || _globalCancellationTokenSource.IsCancellationRequested)
+        {
+            _globalCancellationTokenSource?.Dispose();
+            _globalCancellationTokenSource = new CancellationTokenSource();
+        }
+
+        var individualCts = CancellationTokenSource.CreateLinkedTokenSource(_globalCancellationTokenSource.Token);
+
+        // Replace the old (cancelled/disposed) CTS
+        _individualCancellationTokenSources[index].Dispose();
+        _individualCancellationTokenSources[index] = individualCts;
+
+        // Capture token and path BEFORE ResetForResume() clears vm.ResumeToken
+        var resumeToken = vm.ResumeToken!;
+        var destinationPath = vm.DestinationPath!;
+
+        vm.ResetForResume();
+        vm.SetCancellationTokenSource(individualCts);
+
+        await ResumeFileAsync(vm, resumeToken, destinationPath, individualCts.Token).ConfigureAwait(false);
+    }
+
+    private async Task ResumeFileAsync(DownloadItemViewModel vm, ResumeToken resumeToken, string destinationPath, CancellationToken ct)
+    {
+        Application.Current.Dispatcher.Invoke(MarkDownloadResuming);
+        try
+        {
+            var latencyTracker = new LatencyTracker();
+            var progress = new Progress<TransferState>(state =>
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    vm.UpdateProgress(state);
+                    UpdateStatistics(state);
+                }));
+
+            DownloadResult result = await _downloadService.DownloadFileAsync(
+                resumeToken.Url, destinationPath, progress, latencyTracker, resumeToken, ct);
+
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                if (result.IsSuccess)
+                {
+                    vm.MarkComplete();
+                    MarkDownloadComplete();
+                    if (File.Exists(destinationPath))
+                        File.Delete(destinationPath);
+                }
+                else if (result.ResumeToken != null)
+                {
+                    vm.MarkCancelled(result.ResumeToken); // chainable cancel → resume
+                    MarkDownloadFailed();
+                }
+                else
+                {
+                    vm.MarkError();
+                    MarkDownloadFailed();
+                }
+            });
+        }
+        catch (Exception)
+        {
+            Application.Current.Dispatcher.Invoke(() => vm.MarkError());
         }
     }
 
@@ -240,6 +328,14 @@ public partial class MainViewModel : ObservableObject
     {
         _activeDownloads--;
         _failedDownloads++;
+        UpdateStatisticsDisplay();
+    }
+
+    /// <summary>Reverses the failed/active counters when a cancelled download is resumed.</summary>
+    private void MarkDownloadResuming()
+    {
+        _activeDownloads++;
+        _failedDownloads--;
         UpdateStatisticsDisplay();
     }
 
