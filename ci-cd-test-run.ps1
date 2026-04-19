@@ -55,6 +55,14 @@ $Script:Warnings = [System.Collections.Generic.List[string]]::new()
 function Add-Error   { param([string]$msg) $Script:Errors.Add($msg);   Write-Fail $msg }
 function Add-Warning { param([string]$msg) $Script:Warnings.Add($msg); Write-Warn $msg }
 
+function Test-IsWindows {
+    return [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)
+}
+
+function Test-IsMacOS {
+    return [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::OSX)
+}
+
 $RepoRoot     = $PSScriptRoot
 $WorkflowDir  = Join-Path $RepoRoot '.github' 'workflows'
 $CiYaml       = Join-Path $WorkflowDir 'ci.yml'
@@ -108,20 +116,20 @@ if ($needsAct) {
     # Check Docker binary first — docker info throws unhelpfully if not installed
     $hasDocker = Test-Tool 'docker'
     if (-not $hasDocker) {
-        $installHint = if ($IsWindows) {
+        $installHint = if (Test-IsWindows) {
             'Install Docker Desktop: https://docs.docker.com/desktop/setup/install/windows-install/'
-        } elseif ($IsMacOS) {
+        } elseif (Test-IsMacOS) {
             'brew install --cask docker'
         } else {
             'Install Docker Engine: https://docs.docker.com/engine/install/'
         }
         Add-Error "Tool 'docker' not found. $installHint"
     } else {
-        try {
-            $null = docker info 2>$null
+        $null = & docker info *> $null
+        if ($LASTEXITCODE -eq 0) {
             $dockerAvailable = $true
             Write-Pass 'Docker daemon reachable'
-        } catch {
+        } else {
             Add-Error 'Docker not reachable — act dry/ci modes require Docker daemon running'
         }
     }
