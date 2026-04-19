@@ -64,6 +64,17 @@ jobs:
                   VERSION=$(grep -m1 '<Version>' src/Blazing.Extensions.Http/Blazing.Extensions.Http.csproj \
                     | sed 's/.*<Version>//;s/<\/Version>.*//' \
                     | tr -d '[:space:]')
+
+                  if [ -z "$VERSION" ]; then
+                    echo "::error::Failed to extract <Version> from src/Blazing.Extensions.Http/Blazing.Extensions.Http.csproj"
+                    exit 1
+                  fi
+
+                  if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
+                    echo "::error::Extracted version '$VERSION' is not in the expected semver format (e.g. 1.2.3)"
+                    exit 1
+                  fi
+
                   echo "version=$VERSION" >> $GITHUB_OUTPUT
                   echo "tag=v$VERSION" >> $GITHUB_OUTPUT
 
@@ -76,23 +87,23 @@ jobs:
                     echo "exists=false" >> $GITHUB_OUTPUT
                   fi
 
+            - name: Version already tagged
+              # Fail fast with a clear error so maintainers know they need to bump
+              # <Version> before pushing to master. A silent no-op release is hard to diagnose.
+              if: steps.tag_check.outputs.exists == 'true'
+              run: |
+                  echo "::error::Tag ${{ steps.version.outputs.tag }} already exists. Bump <Version> in Blazing.Extensions.Http.csproj before pushing to master."
+                  exit 1
+
             - name: Pack NuGet packages
               if: steps.tag_check.outputs.exists == 'false'
               run: |
                   dotnet pack src/Blazing.Extensions.Http/Blazing.Extensions.Http.csproj \
                     --no-build --configuration Release --output ./artifacts
 
-            - name: Create GitHub Release
-              if: steps.tag_check.outputs.exists == 'false'
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              run: |
-                  gh release create "${{ steps.version.outputs.tag }}" \
-                    --title "Release ${{ steps.version.outputs.tag }}" \
-                    --generate-notes \
-                    ./artifacts/*.nupkg \
-                    ./artifacts/*.snupkg
-
+            # Push to NuGet.org BEFORE creating the GitHub Release. If the push fails
+            # (expired key, transient outage, etc.) the release tag is not yet created,
+            # so no orphaned GitHub Release exists without a corresponding NuGet package.
             - name: Push Blazing.Extensions.Http to NuGet.org
               if: steps.tag_check.outputs.exists == 'false'
               run: |
@@ -110,6 +121,17 @@ jobs:
                     --api-key ${{ secrets.NUGET_API_KEY }} \
                     --source https://api.nuget.org/v3/index.json \
                     --skip-duplicate
+
+            - name: Create GitHub Release
+              if: steps.tag_check.outputs.exists == 'false'
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  gh release create "${{ steps.version.outputs.tag }}" \
+                    --title "Release ${{ steps.version.outputs.tag }}" \
+                    --generate-notes \
+                    ./artifacts/*.nupkg \
+                    ./artifacts/*.snupkg
 
             - name: Upload test results
               uses: actions/upload-artifact@v7

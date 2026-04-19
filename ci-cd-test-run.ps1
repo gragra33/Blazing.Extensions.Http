@@ -69,15 +69,13 @@ function Test-Tool {
 # ─────────────────────────────────────────────────────────────────────────────
 Write-Header 'Prerequisite Check'
 
-# dotnet: warn only for act-backed modes; act installs .NET inside the runner.
-# Only error when lint-only mode is used (no runner involved) to avoid blocking
-# developers who have Docker+act but not a host dotnet installation.
+# dotnet: optional for all modes handled by this script.
+# - lint uses actionlint only and does not require a host .NET SDK.
+# - act-backed modes install .NET inside the runner via actions/setup-dotnet.
 if (Test-Tool 'dotnet') {
     Write-Pass "dotnet $(dotnet --version)"
-} elseif ($Mode -eq 'lint') {
-    Add-Error "Tool 'dotnet' not found. Install: https://dotnet.microsoft.com/download"
 } else {
-    Add-Warning "Tool 'dotnet' not found on host. Continuing because act-backed workflows install .NET inside the runner via actions/setup-dotnet."
+    Add-Warning "Tool 'dotnet' not found on host. Continuing because this script's lint mode uses actionlint only, and act-backed workflows install .NET inside the runner via actions/setup-dotnet."
 }
 
 if (-not (Test-Path $CiYaml))     { Add-Error "Missing workflow file: $CiYaml" }
