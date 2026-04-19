@@ -1,0 +1,9 @@
+{
+  "solution": {
+    "path": "Blazing.Extensions.Http.sln",
+    "projects": [
+      "src\\Blazing.Extensions.Http\\Blazing.Extensions.Http.csproj",
+      "tests\\Blazing.Extensions.Http.Tests\\Blazing.Extensions.Http.Tests.csproj"
+    ]
+  }
+}

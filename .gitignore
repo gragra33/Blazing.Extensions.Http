@@ -438,6 +438,7 @@ $RECYCLE.BIN/
 
 # ALL DOTTED FOLDERS/FILES (as specifically requested)
 .*
+!.github/
 !.gitignore
 !.gitattributes
 !.editorconfig
